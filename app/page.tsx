@@ -1,22 +1,31 @@
-import Link from 'next/link'
+import { Suspense } from 'react'
+import Navbar from '@/components/ui/Navbar'
+import Footer from '@/components/ui/Footer'
+import Hero from '@/components/landing/Hero'
+import About from '@/components/landing/About'
+import Services from '@/components/landing/Services'
+import ServicesSkeleton from '@/components/landing/ServicesSkeleton'
+import Testimonials from '@/components/landing/Testimonials'
+import CTA from '@/components/landing/CTA'
+
+// Revalidate the landing page at most once per hour (ISR)
+export const revalidate = 3600
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-neutral-50">
-      <div className="text-center space-y-4 px-4">
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-900">
-          HairbyBash
-        </h1>
-        <p className="text-neutral-500 text-lg">
-          Professional hair styling — book your appointment online.
-        </p>
-        <Link
-          href="/services"
-          className="inline-block mt-4 px-6 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors"
-        >
-          View Services
-        </Link>
-      </div>
-    </main>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <About />
+        {/* Stream Services independently — skeleton shows while Supabase fetches */}
+        <Suspense fallback={<ServicesSkeleton />}>
+          <Services />
+        </Suspense>
+        <Testimonials />
+        <CTA />
+      </main>
+      <Footer />
+    </>
   )
 }
