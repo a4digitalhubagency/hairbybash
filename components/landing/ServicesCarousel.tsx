@@ -29,9 +29,8 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
   const containerRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
 
-  const availableCategories = CATEGORIES.filter(
-    (cat) => cat === 'All' || services.some((s) => s.category === cat)
-  )
+  // Always show all categories — Kids shows a coming-soon state when empty
+  const availableCategories = CATEGORIES
 
   const filtered =
     activeCategory === 'All'
@@ -125,6 +124,22 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
           >
+            {filtered.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="py-16 text-center w-full"
+              >
+                <p className="text-gold text-xl mb-3">✦</p>
+                <p className="font-(family-name:--font-playfair) text-white text-xl font-semibold mb-2">
+                  Kids Services Coming Soon
+                </p>
+                <p className="text-white/35 text-sm max-w-xs mx-auto leading-relaxed">
+                  A dedicated children&apos;s menu is on its way. Contact us for early availability.
+                </p>
+              </motion.div>
+            ) : (
             <motion.div
               ref={trackRef}
               animate={{ x: translateX }}
@@ -200,6 +215,7 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
                 </div>
               ))}
             </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
 
