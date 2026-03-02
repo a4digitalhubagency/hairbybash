@@ -1,15 +1,11 @@
 import type { NextConfig } from 'next'
 
-// ── Required environment variables ────────────────────────────────────────────
-// Validated at build time so Vercel fails fast with a clear message rather than
-// shipping a broken deployment that only errors at runtime.
+// ── Environment variable validation ───────────────────────────────────────────
+// Core Supabase vars — throw at build time so the deploy fails fast.
 const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'NEXT_PUBLIC_APP_URL',
 ] as const
 
 for (const key of REQUIRED_ENV_VARS) {
@@ -18,6 +14,19 @@ for (const key of REQUIRED_ENV_VARS) {
       `\n\n❌ Missing required environment variable: ${key}\n` +
       `   Add it to your .env.local (dev) or Vercel project settings (prod).\n`,
     )
+  }
+}
+
+// Stripe + app URL — warn only (needed before payments go live, not for basic site).
+const RECOMMENDED_ENV_VARS = [
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'NEXT_PUBLIC_APP_URL',
+] as const
+
+for (const key of RECOMMENDED_ENV_VARS) {
+  if (!process.env[key]) {
+    console.warn(`⚠️  Environment variable ${key} is not set. Required before payments go live.`)
   }
 }
 

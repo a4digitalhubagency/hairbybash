@@ -14,7 +14,12 @@ export const metadata: Metadata = {
 }
 
 export default async function ServicesPage() {
-  const services = await getActiveServices()
+  let services: Awaited<ReturnType<typeof getActiveServices>> = []
+  try {
+    services = await getActiveServices()
+  } catch (err) {
+    console.error('[ServicesPage] Failed to load services:', err)
+  }
 
   return (
     <>
