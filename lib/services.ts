@@ -1,14 +1,17 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@supabase/supabase-js'
 import type { Service } from '@/types'
 
 /**
  * Fetch all active services ordered by category then name.
- * Uses the admin client (no cookies) so this is compatible with ISR — services
- * are public data and do not require user authentication.
+ * Uses the anon key directly (no cookies, no service role) — compatible with
+ * ISR since NEXT_PUBLIC_* vars are always available at runtime.
  * Throws on Supabase error so Next.js error boundaries can catch it.
  */
 export async function getActiveServices(): Promise<Service[]> {
-  const supabase = createAdminClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
 
   const { data, error } = await supabase
     .from('services')
