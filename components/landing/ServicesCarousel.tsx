@@ -72,6 +72,21 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
   const scrollNext = () =>
     setTranslateX((prev) => Math.max(getMaxTranslate(), prev - getCardWidth()))
 
+  // ── Touch swipe ───────────────────────────────────────────────────────────
+  const touchStartX = useRef(0)
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.changedTouches[0].clientX
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(delta) > 40) {
+      if (delta > 0) scrollNext() // swipe left → next
+      else scrollPrev()           // swipe right → prev
+    }
+  }
+
   return (
     <div>
       {/* ── Category filter tabs ── */}
@@ -103,7 +118,12 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
       </div>
 
       {/* ── Carousel — overflow:hidden = zero scrollbar possible ── */}
-      <div ref={containerRef} className="relative overflow-hidden">
+      <div
+        ref={containerRef}
+        className="relative overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
 
         {/* Previous arrow */}
         <button
