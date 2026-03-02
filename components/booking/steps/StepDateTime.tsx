@@ -5,8 +5,9 @@ import { motion } from 'framer-motion'
 import { formatTime } from '@/lib/format'
 import type { Service, TimeSlot } from '@/types'
 
-// Studio is open Mon-Sat (1–6). Sunday (0) is closed.
-const CLOSED_DAYS = new Set([0])
+// Studio is open every day — no days are blocked client-side.
+// The weekly_availability table is the source of truth server-side.
+const CLOSED_DAYS = new Set<number>([])
 
 interface StepDateTimeProps {
   service: Service
@@ -109,7 +110,7 @@ export default function StepDateTime({
         Select Date &amp; Time
       </h2>
       <p className="text-white/40 text-sm mb-8">
-        {service.name} · Studio open Mon–Sat
+        {service.name} · Studio open Mon–Sun
       </p>
 
       <div className="flex flex-col md:flex-row gap-8">
