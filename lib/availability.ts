@@ -63,6 +63,11 @@ export async function getAvailableSlots(
   const closeMin = timeToMinutes(availRes.data.end_time)
   const duration = serviceRes.data.duration_minutes
 
+  // Slots are offered every 60 minutes regardless of service duration.
+  // Duration determines the end time and conflict window — not the step
+  // between selectable start times.
+  const STRIDE = 60
+
   // Build occupied ranges from existing bookings
   const occupied: Array<{ start: number; end: number }> = (bookingsRes.data ?? []).map((b) => ({
     start: timeToMinutes(b.start_time),
@@ -77,7 +82,7 @@ export async function getAvailableSlots(
 
   const slots: TimeSlot[] = []
 
-  for (let start = openMin; start + duration <= closeMin; start += duration) {
+  for (let start = openMin; start <= closeMin; start += STRIDE) {
     const end = start + duration
 
     // Skip slots that have already passed today
