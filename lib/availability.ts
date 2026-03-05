@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { TimeSlot } from '@/types'
 
 function timeToMinutes(t: string): number {
@@ -13,15 +14,25 @@ function minutesToTime(m: number): string {
   return `${h}:${min}`
 }
 
+export interface AvailabilityResult {
+  slots: TimeSlot[]
+  /** True when the day is open but the service is too long to fit even once within open hours. */
+  noFit: boolean
+  /** True when free time exists between bookings but no single gap is long enough for the service. */
+  insufficientTime: boolean
+}
+
 export async function getAvailableSlots(
   date: string,   // YYYY-MM-DD
   serviceId: string,
-): Promise<TimeSlot[]> {
+): Promise<AvailabilityResult> {
   const supabase = await createClient()
 
   // day_of_week: 0=Sun, 1=Mon, …, 6=Sat
   // Use noon UTC to avoid DST boundary issues when parsing date-only strings
   const dayOfWeek = new Date(date + 'T12:00:00Z').getUTCDay()
+
+  const admin = createAdminClient()
 
   // Parallel fetch: all queries are independent
   const [availRes, blockedRes, serviceRes, bookingsRes] = await Promise.all([
@@ -44,7 +55,8 @@ export async function getAvailableSlots(
       .eq('active', true)
       .single(),
 
-    supabase
+    // Admin client bypasses RLS — needed to see all bookings, not just the current user's
+    admin
       .from('bookings')
       .select('start_time, end_time')
       .eq('booking_date', date)
@@ -52,8 +64,8 @@ export async function getAvailableSlots(
   ])
 
   // Date is closed (no weekly_availability) or explicitly blocked → no slots
-  if (!availRes.data) return []
-  if (blockedRes.data) return []
+  if (!availRes.data) return { slots: [], noFit: false, insufficientTime: false }
+  if (blockedRes.data) return { slots: [], noFit: false, insufficientTime: false }
 
   if (serviceRes.error || !serviceRes.data) {
     throw new Error('Service not found')
@@ -82,7 +94,7 @@ export async function getAvailableSlots(
 
   const slots: TimeSlot[] = []
 
-  for (let start = openMin; start <= closeMin; start += STRIDE) {
+  for (let start = openMin; start + duration <= closeMin; start += STRIDE) {
     const end = start + duration
 
     // Skip slots that have already passed today
@@ -100,5 +112,28 @@ export async function getAvailableSlots(
     })
   }
 
-  return slots
+  // Compute free time windows (gaps between bookings within open hours).
+  // Used to distinguish "fully booked" from "free time exists but too short for this service".
+  const sortedOccupied = [...occupied].sort((a, b) => a.start - b.start)
+  let cursor = openMin
+  let hasLargeEnoughGap = false
+  for (const occ of sortedOccupied) {
+    if (occ.start > cursor && occ.start - cursor >= duration) {
+      hasLargeEnoughGap = true
+      break
+    }
+    cursor = Math.max(cursor, occ.end)
+  }
+  // Check the gap after the last booking to close
+  if (!hasLargeEnoughGap && closeMin - cursor >= duration) hasLargeEnoughGap = true
+
+  // insufficientTime: bookings exist, free windows exist, but none fit the service
+  const insufficientTime = occupied.length > 0 && !hasLargeEnoughGap && slots.length > 0 && slots.every((s) => !s.available)
+
+  // noFit: the service duration simply cannot fit within the working day (ignoring bookings).
+  // Using openMin + duration > closeMin rather than slots.length === 0 avoids a false positive
+  // on today's date when all slots have already passed.
+  const noFit = openMin + duration > closeMin
+
+  return { slots, noFit, insufficientTime }
 }

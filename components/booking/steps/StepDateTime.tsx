@@ -14,6 +14,8 @@ interface StepDateTimeProps {
   selectedDate: string | null
   selectedSlot: TimeSlot | null
   availableSlots: TimeSlot[]
+  slotsNoFit: boolean
+  slotsInsufficientTime: boolean
   slotsLoading: boolean
   onDateChange: (date: string) => void
   onSlotSelect: (slot: TimeSlot) => void
@@ -44,6 +46,8 @@ export default function StepDateTime({
   selectedDate,
   selectedSlot,
   availableSlots,
+  slotsNoFit,
+  slotsInsufficientTime,
   slotsLoading,
   onDateChange,
   onSlotSelect,
@@ -82,6 +86,8 @@ export default function StepDateTime({
 
   const daysInMonth = getDaysInMonth(calYear, calMonth)
   const firstDay = getFirstDayOfMonth(calYear, calMonth)
+
+  const allBooked = availableSlots.length > 0 && availableSlots.every((s) => !s.available)
 
   // Separate slots into morning (< 12:00) and afternoon (>= 12:00)
   const morningSlots = availableSlots.filter((s) => {
@@ -205,8 +211,44 @@ export default function StepDateTime({
             </div>
           ) : availableSlots.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-white/40 text-sm mb-1">No appointments available on this day.</p>
-              <p className="text-white/25 text-xs">Please select another date.</p>
+              {slotsNoFit ? (
+                <>
+                  <p className="text-white/40 text-sm mb-1">Not enough time remaining on this day.</p>
+                  <p className="text-white/25 text-xs">
+                    This {service.duration_minutes >= 60
+                      ? `${service.duration_minutes / 60}h`
+                      : `${service.duration_minutes}min`} service would go past closing time. Please choose another date.
+                  </p>
+                </>
+              ) : selectedDate === todayStr ? (
+                <>
+                  <p className="text-white/40 text-sm mb-1">No more available slots for today.</p>
+                  <p className="text-white/25 text-xs">All time slots have passed. Please select a future date.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-white/40 text-sm mb-1">No appointments available on this day.</p>
+                  <p className="text-white/25 text-xs">Please select another date.</p>
+                </>
+              )}
+            </div>
+          ) : allBooked ? (
+            <div className="py-12 text-center">
+              {slotsInsufficientTime ? (
+                <>
+                  <p className="text-white/40 text-sm mb-1">Not enough time remaining for this service.</p>
+                  <p className="text-white/25 text-xs">
+                    The free time left on this day is less than the {service.duration_minutes >= 60
+                      ? `${service.duration_minutes / 60}h`
+                      : `${service.duration_minutes}min`} needed. Please choose another date.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-white/40 text-sm mb-1">This day is fully booked.</p>
+                  <p className="text-white/25 text-xs">Please select another date.</p>
+                </>
+              )}
             </div>
           ) : (
             <motion.div

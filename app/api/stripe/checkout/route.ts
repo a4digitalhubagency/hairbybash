@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   // Re-run availability to prevent race conditions (two users booking the same slot).
   let slots
   try {
-    slots = await getAvailableSlots(date, serviceId)
+    ;({ slots } = await getAvailableSlots(date, serviceId))
   } catch {
     return NextResponse.json(
       { error: 'Unable to verify availability. Please try again.' },
