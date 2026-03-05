@@ -23,7 +23,7 @@ export default function AboutStory() {
             <h2 className="font-(family-name:--font-playfair) font-bold text-3xl md:text-4xl text-white mb-6">
               Artistry in Every Strand
             </h2>
-          <hr className="border-gold border-2 w-25 my-4 rounded-full mr-auto" />
+          <hr className="border-gold border-2 w-24 my-4 rounded-full mr-auto" />
             
             <div className="space-y-4 text-white/60 text-base leading-relaxed">
               <p>
@@ -35,7 +35,7 @@ export default function AboutStory() {
               <p>
                 Specializing in bespoke coloring, precision cutting, and high-end 
                 extensions, Bash combines technical mastery with a deep 
-                understanding of individual aesthetic. Her approach is personal, 
+                understanding of individual aesthetics. Her approach is personal, 
                 sophisticated, and always ahead of the curve.
               </p>
             </div>
@@ -45,7 +45,8 @@ export default function AboutStory() {
      <motion.div
      className="relative w-full max-w-md mx-auto"
      initial={{ opacity: 0, x: 30 }}
-     animate={{ opacity: 1, x: 0 }}
+     whileInView={{ opacity: 1, x: 0 }}
+     viewport={viewport}
      transition={{ duration: 0.7, ease }}
      >
   {/* Outer glow (like Hero) */}

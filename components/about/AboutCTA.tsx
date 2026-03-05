@@ -52,7 +52,7 @@ export default function AboutCTA() {
 
             {/* Button */}
             <Link
-              href="https://instagram.com/hairbybash "
+              href="https://instagram.com/hairbybash"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-8 py-3.5 bg-black text-white font-semibold text-sm rounded-full hover:bg-neutral-900 transition-colors"
