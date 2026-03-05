@@ -195,6 +195,7 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
                         src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
                         alt={service.name}
                         fill
+                        sizes="(max-width: 640px) 85vw, (max-width: 1024px) 45vw, 30vw"
                         className="object-cover transition-transform duration-700 group-hover:scale-105"
                       />
 
