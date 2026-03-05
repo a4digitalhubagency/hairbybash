@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { formatPrice, formatDuration } from '@/lib/format'
 import Toast from '@/components/ui/Toast'
@@ -89,7 +89,7 @@ function Toggle({
     >
       <span
         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-          checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
+          checked ? 'translate-x-4.5' : 'translate-x-0.75'
         }`}
       />
     </button>
@@ -99,17 +99,20 @@ function Toggle({
 // ── Image thumbnail ──────────────────────────────────────────────────────────
 
 function ServiceThumb({ service }: { service: Service }) {
-  if (service.image_url) {
+  const [imgError, setImgError] = useState(false)
+  const letter = service.name[0]?.toUpperCase() ?? '?'
+
+  if (service.image_url && !imgError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={service.image_url}
         alt={service.name}
+        onError={() => setImgError(true)}
         className="w-10 h-10 rounded-lg object-cover shrink-0 bg-dark-card"
       />
     )
   }
-  const letter = service.name[0]?.toUpperCase() ?? '?'
   return (
     <div className="w-10 h-10 rounded-lg bg-gold/15 border border-gold/20 flex items-center justify-center shrink-0">
       <span className="text-gold text-sm font-semibold">{letter}</span>
@@ -161,6 +164,31 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const blobUrlRef = useRef<string | null>(null)
+
+  // Guard close — never interrupt an in-flight upload
+  function handleClose() {
+    if (uploading) return
+    onClose()
+  }
+
+  // Escape key
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploading])
+
+  // Revoke blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    }
+  }, [])
 
   function field(key: keyof ServiceForm, value: string | boolean) {
     onChange({ ...form, [key]: value })
@@ -178,8 +206,14 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
       return
     }
 
+    // Revoke any previous blob URL
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+    }
+
     // Instant local preview
     const preview = URL.createObjectURL(file)
+    blobUrlRef.current = preview
     setLocalPreview(preview)
     setUploading(true)
 
@@ -189,9 +223,14 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
       const res = await fetch('/api/admin/services/upload', { method: 'POST', body })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+      // Revoke blob — swap to real CDN URL
+      URL.revokeObjectURL(preview)
+      blobUrlRef.current = null
       onChange({ ...form, image_url: json.url })
-      setLocalPreview(null) // swap to real URL
+      setLocalPreview(null)
     } catch (err) {
+      URL.revokeObjectURL(preview)
+      blobUrlRef.current = null
       setLocalPreview(null)
       addToast(err instanceof Error ? err.message : 'Upload failed', 'error')
     } finally {
@@ -222,7 +261,7 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={handleClose} aria-hidden />
 
       {/* Two-panel modal */}
       <div className="relative flex w-full max-w-2xl bg-dark-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[92vh]">
@@ -247,7 +286,7 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
           </p>
 
           {/* Service name preview (live) */}
-          <h2 className="font-(family-name:--font-playfair) font-bold text-xl text-white leading-snug mb-3 break-words">
+          <h2 className="font-(family-name:--font-playfair) font-bold text-xl text-white leading-snug mb-3 wrap-break-word">
             {form.name || <span className="text-white/20">Service Name</span>}
           </h2>
 
@@ -305,7 +344,7 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-white/35 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/8 ml-4 shrink-0"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -428,7 +467,7 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
 
                 {/* Active */}
                 <Field label="Availability">
-                  <div className="flex items-center justify-between h-[42px] bg-dark border border-white/10 rounded-xl px-4">
+                  <div className="flex items-center justify-between h-10.5 bg-dark border border-white/10 rounded-xl px-4">
                     <span className="text-white/55 text-sm">{form.active ? 'Active' : 'Hidden'}</span>
                     <Toggle checked={form.active} onChange={() => field('active', !form.active)} />
                   </div>
@@ -516,35 +555,59 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-white/8 flex items-center gap-3 shrink-0">
-            {editing && (
+            {editing && !confirmDelete && (
               <button
-                onClick={onDelete}
-                disabled={deleting || saving}
+                onClick={() => setConfirmDelete(true)}
+                disabled={deleting || saving || uploading}
                 className="text-red-400 text-sm font-medium hover:bg-red-500/10 px-3 py-2 rounded-xl transition-colors disabled:opacity-40"
               >
-                {deleting ? 'Deleting…' : 'Delete Service'}
+                Delete Service
               </button>
             )}
-            <div className="ml-auto flex items-center gap-3">
-              <button
-                onClick={onClose}
-                disabled={saving || deleting}
-                className="px-4 py-2 text-white/50 text-sm font-medium hover:text-white hover:bg-white/5 rounded-xl transition-colors disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onSave}
-                disabled={saving || deleting || uploading}
-                className="flex items-center gap-2 px-5 py-2 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold-hover transition-colors disabled:opacity-50"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v4H7V3M12 12v5m0 0l-2-2m2 2l2-2" />
-                </svg>
-                {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Service'}
-              </button>
-            </div>
+
+            {/* Two-step delete confirmation */}
+            {editing && confirmDelete && (
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-xs">This can&apos;t be undone.</span>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                  className="px-3 py-1.5 text-white/50 text-xs font-medium hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={onDelete}
+                  disabled={deleting}
+                  className="px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
+                >
+                  {deleting ? 'Deleting…' : 'Yes, Delete'}
+                </button>
+              </div>
+            )}
+
+            {!confirmDelete && (
+              <div className="ml-auto flex items-center gap-3">
+                <button
+                  onClick={handleClose}
+                  disabled={saving || deleting}
+                  className="px-4 py-2 text-white/50 text-sm font-medium hover:text-white hover:bg-white/5 rounded-xl transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={onSave}
+                  disabled={saving || deleting || uploading}
+                  className="flex items-center gap-2 px-5 py-2 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold-hover transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v4H7V3M12 12v5m0 0l-2-2m2 2l2-2" />
+                  </svg>
+                  {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Service'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -567,6 +630,7 @@ export default function ServicesTable({ initialServices }: Props) {
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
+  const filterRef = useRef<HTMLDivElement>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [form, setForm] = useState<ServiceForm>(EMPTY_FORM)
@@ -581,6 +645,18 @@ export default function ServicesTable({ initialServices }: Props) {
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    if (!filterOpen) return
+    function handleClick(e: MouseEvent) {
+      if (!filterRef.current?.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [filterOpen])
 
   // ── Filter + pagination ───────────────────────────────────────────────────
 
@@ -617,10 +693,13 @@ export default function ServicesTable({ initialServices }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: newActive }),
       })
-      if (!res.ok) throw new Error()
-    } catch {
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Failed to update availability')
+      }
+    } catch (err) {
       setServices((prev) => prev.map((s) => (s.id === service.id ? { ...s, active: service.active } : s)))
-      addToast('Failed to update availability', 'error')
+      addToast(err instanceof Error ? err.message : 'Failed to update availability', 'error')
     } finally {
       setTogglingId(null)
     }
@@ -652,13 +731,23 @@ export default function ServicesTable({ initialServices }: Props) {
       addToast('Please fill in all required fields', 'error')
       return
     }
+    const priceVal = parseFloat(form.price)
+    if (isNaN(priceVal) || priceVal < 0) {
+      addToast('Please enter a valid price', 'error')
+      return
+    }
+    const depositVal = parseInt(form.deposit_percentage)
+    if (isNaN(depositVal) || depositVal < 0 || depositVal > 100) {
+      addToast('Deposit must be between 0 and 100', 'error')
+      return
+    }
 
     setSaving(true)
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
-      price: parseFloat(form.price),
-      deposit_percentage: parseInt(form.deposit_percentage) || 50,
+      price: priceVal,
+      deposit_percentage: depositVal,
       duration_minutes: parseInt(form.duration_minutes),
       category: form.category,
       image_url: form.image_url.trim() || null,
@@ -672,7 +761,10 @@ export default function ServicesTable({ initialServices }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (!res.ok) throw new Error()
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.error ?? 'Failed to update service')
+        }
         const { service } = await res.json()
         setServices((prev) => prev.map((s) => (s.id === editingService.id ? service : s)))
         addToast(`"${service.name}" updated`, 'success')
@@ -682,15 +774,18 @@ export default function ServicesTable({ initialServices }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (!res.ok) throw new Error()
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.error ?? 'Failed to create service')
+        }
         const { service } = await res.json()
         setServices((prev) => [service, ...prev])
         addToast(`"${service.name}" created`, 'success')
         setPage(1)
       }
       setModalOpen(false)
-    } catch {
-      addToast(editingService ? 'Failed to update service' : 'Failed to create service', 'error')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : (editingService ? 'Failed to update service' : 'Failed to create service'), 'error')
     } finally {
       setSaving(false)
     }
@@ -704,12 +799,15 @@ export default function ServicesTable({ initialServices }: Props) {
 
     try {
       const res = await fetch(`/api/admin/services/${editingService.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Failed to delete service')
+      }
       setServices((prev) => prev.filter((s) => s.id !== editingService.id))
       addToast(`"${editingService.name}" deleted`, 'success')
       setModalOpen(false)
-    } catch {
-      addToast('Failed to delete service', 'error')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete service', 'error')
     } finally {
       setDeletingId(null)
     }
@@ -775,7 +873,7 @@ export default function ServicesTable({ initialServices }: Props) {
             </div>
 
             {/* Category filter */}
-            <div className="relative">
+            <div ref={filterRef} className="relative">
               <button
                 onClick={() => setFilterOpen((o) => !o)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
