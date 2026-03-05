@@ -43,6 +43,9 @@ export async function PATCH(
   return NextResponse.json({ service: data })
 }
 
+const BUCKET = 'service-images'
+const SUPABASE_STORAGE_PREFIX = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -52,8 +55,15 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-
   const admin = createAdminClient()
+
+  // Fetch the service first so we can clean up its storage image if needed
+  const { data: service } = await admin
+    .from('services')
+    .select('image_url')
+    .eq('id', id)
+    .single()
+
   const { error } = await admin
     .from('services')
     .delete()
@@ -62,6 +72,12 @@ export async function DELETE(
   if (error) {
     console.error('[services] DELETE error:', error)
     return NextResponse.json({ error: 'Failed to delete service' }, { status: 500 })
+  }
+
+  // Best-effort: remove the image from Storage if it came from our bucket
+  if (service?.image_url?.startsWith(SUPABASE_STORAGE_PREFIX)) {
+    const storagePath = service.image_url.slice(SUPABASE_STORAGE_PREFIX.length)
+    await admin.storage.from(BUCKET).remove([storagePath])
   }
 
   return new NextResponse(null, { status: 204 })
