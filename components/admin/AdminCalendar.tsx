@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Toast from '@/components/ui/Toast'
 import type { ToastMessage } from '@/components/ui/Toast'
 import type { Booking, BookingStatus } from '@/types'
@@ -31,7 +31,9 @@ function addDays(d: Date, n: number): Date {
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  // Use local date parts — toISOString() is UTC and will be off by a day
+  // on positive UTC offsets, causing bookings to land in the wrong column.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function fmtMonthYear(d: Date): string {
@@ -84,6 +86,7 @@ function bookingHeight(startTime: string, endTime: string): number {
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 function isInProgress(b: Booking, now: Date): boolean {
+  if (b.status === 'cancelled') return false
   if (b.booking_date !== toDateStr(now)) return false
   const nowMin = now.getHours() * 60 + now.getMinutes()
   return nowMin >= timeToMin(b.start_time) && nowMin < timeToMin(b.end_time)
@@ -336,6 +339,9 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   // Day-view date (defaults to today)
   const [dayViewDate, setDayViewDate] = useState(() => toDateStr(new Date()))
 
+  // AbortController ref — cancels in-flight fetches on rapid week navigation
+  const fetchAbortRef = useRef<AbortController | null>(null)
+
   // Live clock — update every minute for "in progress" detection
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000)
@@ -350,19 +356,30 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   // ── Fetch bookings for a given week ────────────────────────────────────────
 
   const fetchWeek = useCallback(async (start: Date) => {
+    // Cancel any in-flight request (rapid prev/next clicks)
+    fetchAbortRef.current?.abort()
+    const controller = new AbortController()
+    fetchAbortRef.current = controller
+
     setLoading(true)
     const end = addDays(start, 6)
     try {
       const res = await fetch(
         `/api/admin/bookings/calendar?start=${toDateStr(start)}&end=${toDateStr(end)}`,
+        { signal: controller.signal },
       )
-      if (!res.ok) throw new Error()
+      if (res.status === 401) throw new Error('Session expired — please log in again')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Failed to load bookings')
+      }
       const { bookings: data } = await res.json()
       setBookings(data)
-    } catch {
-      addToast('Failed to load bookings', 'error')
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return   // superseded by newer fetch
+      addToast(err instanceof Error ? err.message : 'Failed to load bookings', 'error')
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) setLoading(false)
     }
   }, [addToast])
 
@@ -404,11 +421,13 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
     return map
   }, [bookings])
 
+  // Derived directly from raw bookings so cancelled appointments appear in the sidebar
   const todayBookings = useMemo(
-    () => (bookingsByDate[todayStr] ?? [])
+    () => bookings
+      .filter(b => b.booking_date === todayStr)
       .slice()
       .sort((a, b) => a.start_time.localeCompare(b.start_time)),
-    [bookingsByDate, todayStr],
+    [bookings, todayStr],
   )
 
   const dayBookings = useMemo(
@@ -686,7 +705,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
                       </div>
                     ))}
                   </div>
-                  <div className="flex-1 border-l border-white/8 min-w-[260px]">
+                  <div className="flex-1 border-l border-white/8 min-w-65">
                     <GridColumn date={new Date(dayViewDate + 'T12:00:00')} />
                   </div>
                 </div>

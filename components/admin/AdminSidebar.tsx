@@ -31,6 +31,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Services',
+    href: '/admin/services',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Clients',
     href: '/admin/clients',
     icon: (
@@ -41,15 +50,6 @@ const NAV_ITEMS = [
       </svg>
     ),
     soon: true,
-  },
-  {
-    label: 'Services',
-    href: '/admin/services',
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
-      </svg>
-    ),
   },
   {
     label: 'Finances',
