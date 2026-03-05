@@ -299,7 +299,7 @@ function SidebarItem({
       className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors
         ${selected ? 'bg-white/8 ring-1 ring-white/10' : 'hover:bg-white/5'}`}
     >
-      <div className="w-[52px] shrink-0 text-right">
+      <div className="w-13 shrink-0 text-right">
         <p className="text-white/45 text-[11px] font-medium leading-tight">{fmtTime(booking.start_time)}</p>
       </div>
       <Avatar name={booking.client_name} />
@@ -398,6 +398,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   const bookingsByDate = useMemo(() => {
     const map: Record<string, Booking[]> = {}
     for (const b of bookings) {
+      if (b.status === 'cancelled') continue
       ;(map[b.booking_date] ??= []).push(b)
     }
     return map
@@ -479,23 +480,23 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
 
     return (
       <div
-        className={`relative ${isToday ? 'bg-gold/[0.03]' : ''}`}
+        className={`relative ${isToday ? 'bg-gold/3' : ''}`}
         style={{ height: (GRID_END - GRID_START) * HOUR_HEIGHT }}
       >
         {/* Hour lines */}
         {GRID_HOURS.map((_, i) => (
-          <div key={i} className="absolute inset-x-0 border-t border-white/[0.04]" style={{ top: i * HOUR_HEIGHT }} />
+          <div key={i} className="absolute inset-x-0 border-t border-white/4" style={{ top: i * HOUR_HEIGHT }} />
         ))}
 
         {/* Half-hour lines */}
         {GRID_HOURS.map((_, i) => (
-          <div key={`h${i}`} className="absolute inset-x-0 border-t border-white/[0.02]" style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
+          <div key={`h${i}`} className="absolute inset-x-0 border-t border-white/2" style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
         ))}
 
         {/* Current time line (today only) */}
         {isToday && timeTop !== null && (
           <div className="absolute inset-x-0 z-10 flex items-center pointer-events-none" style={{ top: timeTop }}>
-            <div className="w-2 h-2 rounded-full bg-gold shrink-0 -ml-1 shadow-[0_0_6px_theme(colors.yellow.400)]" />
+            <div className="w-2 h-2 rounded-full bg-gold shrink-0 -ml-1 shadow-[0_0_6px_var(--color-yellow-400)]" />
             <div className="flex-1 h-px bg-gold/70" />
           </div>
         )}
