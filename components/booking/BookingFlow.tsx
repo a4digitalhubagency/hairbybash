@@ -17,6 +17,8 @@ interface BookingState {
   selectedDate: string | null
   selectedSlot: TimeSlot | null
   availableSlots: TimeSlot[]
+  slotsNoFit: boolean
+  slotsInsufficientTime: boolean
   slotsLoading: boolean
   clientName: string
   clientEmail: string
@@ -39,6 +41,8 @@ function getInitialState(
     selectedDate: null,
     selectedSlot: null,
     availableSlots: [],
+    slotsNoFit: false,
+    slotsInsufficientTime: false,
     slotsLoading: false,
     clientName: '',
     clientEmail: '',
@@ -78,17 +82,17 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
   useEffect(() => {
     if (!state.selectedService || !state.selectedDate) return
 
-    setState((s) => ({ ...s, slotsLoading: true, availableSlots: [], selectedSlot: null }))
+    setState((s) => ({ ...s, slotsLoading: true, availableSlots: [], slotsNoFit: false, slotsInsufficientTime: false, selectedSlot: null }))
 
     fetch(
       `/api/availability?date=${state.selectedDate}&serviceId=${state.selectedService.id}`,
     )
       .then((r) => {
         if (!r.ok) throw new Error('Failed to fetch availability')
-        return r.json() as Promise<{ slots: TimeSlot[] }>
+        return r.json() as Promise<{ slots: TimeSlot[], noFit: boolean, insufficientTime: boolean }>
       })
-      .then(({ slots }) =>
-        setState((s) => ({ ...s, availableSlots: slots, slotsLoading: false })),
+      .then(({ slots, noFit, insufficientTime }) =>
+        setState((s) => ({ ...s, availableSlots: slots, slotsNoFit: noFit ?? false, slotsInsufficientTime: insufficientTime ?? false, slotsLoading: false })),
       )
       .catch(() => {
         setState((s) => ({ ...s, slotsLoading: false }))
@@ -127,7 +131,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
     const prevStep = STEP_ORDER[currentIndex - 1]
     setState((s) => {
       if (prevStep === 'service') {
-        return { ...s, currentStep: 'service', selectedDate: null, selectedSlot: null, availableSlots: [] }
+        return { ...s, currentStep: 'service', selectedDate: null, selectedSlot: null, availableSlots: [], slotsNoFit: false, slotsInsufficientTime: false }
       }
       if (prevStep === 'datetime') {
         return { ...s, currentStep: 'datetime', selectedSlot: null }
@@ -145,6 +149,8 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
       selectedDate: s.selectedService?.id === service.id ? s.selectedDate : null,
       selectedSlot: null,
       availableSlots: [],
+      slotsNoFit: false,
+      slotsInsufficientTime: false,
       currentStep: 'datetime',
     }))
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -219,6 +225,8 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
             currentStep: 'datetime',
             selectedSlot: null,
             availableSlots: [],
+            slotsNoFit: false,
+            slotsInsufficientTime: false,
           }))
           addToast(data.error ?? 'That slot was just booked. Please choose another time.')
           return
@@ -290,6 +298,8 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
                     selectedDate={state.selectedDate}
                     selectedSlot={state.selectedSlot}
                     availableSlots={state.availableSlots}
+                    slotsNoFit={state.slotsNoFit}
+                    slotsInsufficientTime={state.slotsInsufficientTime}
                     slotsLoading={state.slotsLoading}
                     onDateChange={handleDateChange}
                     onSlotSelect={handleSlotSelect}

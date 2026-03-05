@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  sendBookingConfirmedEmails,
+  sendBookingExpiredEmail,
+  type FullBooking,
+} from '@/lib/email'
 import type Stripe from 'stripe'
 
 // Must use nodejs runtime — edge runtime doesn't support stripe signature verification
@@ -46,10 +51,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
-    const { error } = await supabase
+    // Guard with .eq('status', 'pending') — idempotent: if Stripe retries this webhook
+    // after a slow response, the update is a no-op and we skip sending duplicate emails.
+    const { data: updated, error } = await supabase
       .from('bookings')
       .update({ status: 'confirmed', payment_status: 'paid' })
       .eq('id', bookingId)
+      .eq('status', 'pending')
+      .select('id')
 
     if (error) {
       console.error('[webhook] Failed to confirm booking:', bookingId, error)
@@ -57,7 +66,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
     }
 
-    console.log(`[webhook] Booking ${bookingId} confirmed (session: ${session.id})`)
+    const wasConfirmed = updated && updated.length > 0
+    console.log(`[webhook] Booking ${bookingId} ${wasConfirmed ? 'confirmed' : 'already confirmed — skipping email'} (session: ${session.id})`)
+
+    // Only send emails if we actually changed the status (not a duplicate webhook delivery)
+    if (wasConfirmed) {
+      try {
+        const { data: fullBooking } = await supabase
+          .from('bookings')
+          .select('*, service:services(*)')
+          .eq('id', bookingId)
+          .single()
+        if (fullBooking) await sendBookingConfirmedEmails(fullBooking as FullBooking)
+      } catch (emailErr) {
+        console.error('[webhook] Email send failed (non-fatal):', emailErr)
+      }
+    }
   }
 
   // ── checkout.session.expired ───────────────────────────────────────────────
@@ -66,11 +90,12 @@ export async function POST(req: NextRequest) {
     const bookingId = session.metadata?.bookingId
 
     if (bookingId) {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('bookings')
         .update({ status: 'cancelled' })
         .eq('id', bookingId)
         .eq('status', 'pending')  // only cancel if still pending — don't clobber confirmed
+        .select('id')
 
       if (error) {
         console.error('[webhook] Failed to cancel expired booking:', bookingId, error)
@@ -78,7 +103,31 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
       }
 
-      console.log(`[webhook] Booking ${bookingId} cancelled (session expired)`)
+      const wasCancelled = updated && updated.length > 0
+      console.log(`[webhook] Booking ${bookingId} ${wasCancelled ? 'cancelled' : 'already resolved — skipping email'} (session expired)`)
+
+      // Only notify client if we actually cancelled (not a duplicate webhook or already-confirmed booking)
+      if (wasCancelled) {
+        try {
+          const clientEmail = session.metadata?.clientEmail ?? session.customer_email
+          const bookingDate = session.metadata?.date ?? ''
+          const serviceId = session.metadata?.serviceId
+          let serviceName = 'your service'
+          if (serviceId) {
+            const { data: svc } = await supabase
+              .from('services')
+              .select('name')
+              .eq('id', serviceId)
+              .single()
+            if (svc) serviceName = svc.name
+          }
+          if (clientEmail) {
+            await sendBookingExpiredEmail(clientEmail, bookingDate, serviceName)
+          }
+        } catch (emailErr) {
+          console.error('[webhook] Expired email send failed (non-fatal):', emailErr)
+        }
+      }
     }
   }
 
