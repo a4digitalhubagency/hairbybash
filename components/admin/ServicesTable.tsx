@@ -154,14 +154,70 @@ interface ModalProps {
   onSave: () => void
   onDelete: () => void
   onClose: () => void
+  addToast: (message: string, type: ToastMessage['type']) => void
 }
 
-function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDelete, onClose }: ModalProps) {
+function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDelete, onClose, addToast }: ModalProps) {
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+
   function field(key: keyof ServiceForm, value: string | boolean) {
     onChange({ ...form, [key]: value })
   }
 
   const descRemaining = DESC_MAX - form.description.length
+
+  async function uploadFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select an image file', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image must be under 5 MB', 'error')
+      return
+    }
+
+    // Instant local preview
+    const preview = URL.createObjectURL(file)
+    setLocalPreview(preview)
+    setUploading(true)
+
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch('/api/admin/services/upload', { method: 'POST', body })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+      onChange({ ...form, image_url: json.url })
+      setLocalPreview(null) // swap to real URL
+    } catch (err) {
+      setLocalPreview(null)
+      addToast(err instanceof Error ? err.message : 'Upload failed', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) uploadFile(file)
+    e.target.value = '' // reset so same file can be reselected
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) uploadFile(file)
+  }
+
+  function clearImage() {
+    setLocalPreview(null)
+    onChange({ ...form, image_url: '' })
+  }
+
+  const previewSrc = localPreview ?? (form.image_url || null)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -216,12 +272,12 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
           {/* Image preview */}
           <div>
             <div className="w-full h-28 rounded-xl overflow-hidden border border-white/8 bg-dark-card flex items-center justify-center">
-              {form.image_url ? (
+              {previewSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={form.image_url}
+                  src={previewSrc}
                   alt="Preview"
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover transition-opacity ${uploading ? 'opacity-50' : ''}`}
                 />
               ) : (
                 <svg className="w-8 h-8 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -384,30 +440,76 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
             {/* ── Gallery Image ──────────────────────────────────────── */}
             <div>
               <SectionLabel>Gallery Image</SectionLabel>
-              <div className="border border-dashed border-gold/30 rounded-xl p-4 space-y-3">
-                {form.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={form.image_url}
-                    alt="Service preview"
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-24 text-white/20 gap-2">
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                    <span className="text-xs">No image added</span>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`border border-dashed rounded-xl overflow-hidden transition-colors ${
+                  dragOver ? 'border-gold bg-gold/5' : 'border-gold/30'
+                }`}
+              >
+                {/* Image preview */}
+                {previewSrc ? (
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewSrc}
+                      alt="Service preview"
+                      className={`w-full h-36 object-cover transition-opacity ${uploading ? 'opacity-40' : 'opacity-100'}`}
+                    />
+                    {uploading && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                        <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <span className="text-white text-xs font-medium">Uploading…</span>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-28 text-white/20 gap-2 cursor-pointer hover:text-white/35 transition-colors">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span className="text-xs">Drop image here or click to upload</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileInput} disabled={uploading} />
+                  </label>
                 )}
-                <input
-                  type="url"
-                  value={form.image_url}
-                  onChange={(e) => field('image_url', e.target.value)}
-                  placeholder="Paste image URL..."
-                  className={`${inputCls} text-xs`}
-                />
+
+                {/* Bottom action bar */}
+                <div className="px-3 py-2.5 border-t border-gold/15 flex items-center gap-2">
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/8 border border-white/10 rounded-lg text-white/55 hover:text-white text-xs font-medium transition-colors cursor-pointer ${uploading ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    {previewSrc ? 'Replace image' : 'Upload from device'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileInput} disabled={uploading} />
+                  </label>
+
+                  {previewSrc && !uploading && (
+                    <button
+                      onClick={clearImage}
+                      className="px-3 py-1.5 text-red-400/60 hover:text-red-400 text-xs font-medium hover:bg-red-500/10 rounded-lg transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+
+                  {/* URL fallback */}
+                  <input
+                    type="url"
+                    value={form.image_url}
+                    onChange={(e) => { setLocalPreview(null); field('image_url', e.target.value) }}
+                    placeholder="Or paste URL…"
+                    disabled={uploading}
+                    className="ml-auto w-40 bg-dark border border-white/8 rounded-lg px-3 py-1.5 text-white/60 text-xs placeholder-white/20 focus:outline-none focus:border-gold/40 focus:text-white transition-colors disabled:opacity-40"
+                  />
+                </div>
               </div>
+              <p className="text-white/20 text-[10px] mt-1.5">JPEG, PNG, WebP or GIF · max 5 MB</p>
             </div>
 
           </div>
@@ -433,7 +535,7 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
               </button>
               <button
                 onClick={onSave}
-                disabled={saving || deleting}
+                disabled={saving || deleting || uploading}
                 className="flex items-center gap-2 px-5 py-2 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold-hover transition-colors disabled:opacity-50"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -629,6 +731,7 @@ export default function ServicesTable({ initialServices }: Props) {
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={closeModal}
+          addToast={addToast}
         />
       )}
 
