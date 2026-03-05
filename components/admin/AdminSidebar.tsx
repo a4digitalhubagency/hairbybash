@@ -51,7 +51,6 @@ const NAV_ITEMS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
       </svg>
     ),
-    soon: true,
   },
   {
     label: 'Finances',
