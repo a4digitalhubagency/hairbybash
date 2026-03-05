@@ -426,7 +426,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   const isCurrentWeek = toDateStr(getMonday(new Date())) === toDateStr(weekStart)
 
   const todayStats = {
-    total:     todayBookings.length,
+    confirmed: todayBookings.filter(b => b.status === 'confirmed').length,
     pending:   todayBookings.filter(b => b.status === 'pending').length,
     cancelled: todayBookings.filter(b => b.status === 'cancelled').length,
   }
@@ -719,9 +719,9 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
           {/* Stats */}
           <div className="grid grid-cols-3 border-b border-white/8 shrink-0" style={{ gap: 1, background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { label: 'Bookings', value: todayStats.total,     textCls: 'text-white' },
+              { label: 'Confirmed', value: todayStats.confirmed, textCls: 'text-emerald-400' },
               { label: 'Pending',  value: todayStats.pending,   textCls: 'text-amber-400' },
-              { label: 'Cancel',   value: todayStats.cancelled, textCls: 'text-red-400' },
+              { label: 'Cancelled', value: todayStats.cancelled, textCls: 'text-red-400' },
             ].map(stat => (
               <div key={stat.label} className="bg-dark-surface px-3 py-3 text-center">
                 <p className={`text-xl font-bold ${stat.textCls}`}>{stat.value}</p>
