@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { getAvailableSlots } from '@/lib/availability'
+import { getAppUrl } from '@/lib/url'
 
 interface CheckoutBody {
   serviceId: string
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
   const depositWithGST = Math.round(depositBase * 1.05)
 
   // ── 7. Create Stripe Checkout session ─────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getAppUrl()
 
   let session
   try {
