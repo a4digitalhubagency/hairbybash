@@ -16,7 +16,7 @@ const milestones = [
   {
     icon: '✦',
     title: 'Boutique Launch',
-    description: 'Opened the first HairbyBash studio in Calgary, bringing world-class techniques to Alberta.',
+    description: 'HairbyBash began its journey in St. John’s, Newfoundland, where we first introduced our signature styling techniques. In 2023, we expanded our footprint, bringing our premium hair care services to the vibrant community of Calgary, Alberta',
     year: '2016',
   },
   {
