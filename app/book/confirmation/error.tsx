@@ -28,7 +28,7 @@ export default function ConfirmationError({
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <a
-            href="mailto:hello@hairbybash.ca"
+            href="mailto:hairbybash01@gmail.com"
             className="px-7 py-3 bg-gold text-black font-semibold text-sm rounded hover:bg-gold-hover transition-colors"
           >
             Contact Us

@@ -23,7 +23,7 @@ const channels = [
   },
   {
     label: 'Email',
-    value: 'hello@hairbybash.ca',
+    value: 'hairbybash01@gmail.com',
     cta: 'Send a Message',
     href: 'mailto:hairbybash01@gmail.com',
     iconBg: 'bg-gold/10 border-gold/20',
