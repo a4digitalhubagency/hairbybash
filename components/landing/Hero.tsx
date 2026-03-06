@@ -11,7 +11,7 @@ export default function Hero() {
     <section className="relative min-h-screen bg-dark flex flex-col lg:flex-row overflow-hidden">
 
       {/* Ambient warm glow — gives depth to the dark bg */}
-      <div className="pointer-events-none absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full bg-gold/[0.04] blur-3xl" />
+      <div className="pointer-events-none absolute -top-32 -left-32 w-150 h-150 rounded-full bg-gold/4 blur-3xl" />
 
       {/* ── Left column — text ── */}
       <div className="relative flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 py-28 lg:py-0 order-2 lg:order-1 z-10">
@@ -55,7 +55,7 @@ export default function Hero() {
 
         {/* Thin divider */}
         <motion.div
-          className="h-px bg-white/10 max-w-[200px] mb-7"
+          className="h-px bg-white/10 max-w-50 mb-7"
           initial={{ scaleX: 0, originX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.5, delay: 0.32, ease }}
@@ -119,7 +119,7 @@ export default function Hero() {
         <div className="absolute inset-0 bg-dark-surface/40 hidden lg:block" />
 
         <motion.div
-          className="relative w-full max-w-[300px] sm:max-w-[340px]"
+          className="relative w-full max-w-75 sm:max-w-85"
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.85, delay: 0.15, ease }}
@@ -128,9 +128,9 @@ export default function Hero() {
           <div className="absolute -bottom-4 -right-4 w-full h-full rounded-2xl border border-gold/25 pointer-events-none" />
 
           {/* Image */}
-          <div className="relative w-full aspect-[2/3] rounded-2xl overflow-hidden">
+          <div className="relative w-full aspect-2/3 rounded-2xl overflow-hidden">
             <Image
-              src="/images/heroHairByBash.jpeg"
+              src="/images/heroHairByBash.webp"
               alt="HairbyBash — Calgary Braider & Loctician"
               fill
               className="object-cover object-top"
@@ -140,7 +140,7 @@ export default function Hero() {
             {/* Inner vignette ring for depth */}
             <div className="absolute inset-0 ring-1 ring-inset ring-white/8 rounded-2xl" />
             {/* Subtle bottom fade to blend into section */}
-            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/30 to-transparent" />
           </div>
 
           {/* Floating badge */}
@@ -162,7 +162,7 @@ export default function Hero() {
 
       {/* Scroll cue */}
       <motion.div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 hidden lg:flex"
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 lg:flex"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.1, duration: 0.6 }}

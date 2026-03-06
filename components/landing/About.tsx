@@ -21,7 +21,7 @@ export default function About() {
         >
           <div className="relative aspect-4/5 rounded overflow-hidden border border-white/10">
             <Image
-              src="/images/about.webp"
+              src="/images/about/story.webp"
               alt="HairbyBash stylist at work"
               fill
               className="object-cover"
