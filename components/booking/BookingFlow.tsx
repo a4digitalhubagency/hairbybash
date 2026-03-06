@@ -272,7 +272,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
         <StepIndicator currentStep={state.currentStep} />
 
-        <div className="flex flex-col-reverse lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* ── Main step content ── */}
           <div className="flex-1 min-w-0">
             <AnimatePresence mode="wait">
