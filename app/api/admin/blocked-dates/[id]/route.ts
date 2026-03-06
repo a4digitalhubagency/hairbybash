@@ -14,14 +14,19 @@ export async function DELETE(
   const { id } = await params
 
   const admin = createAdminClient()
-  const { error } = await admin
+  const { data, error } = await admin
     .from('blocked_dates')
     .delete()
     .eq('id', id)
+    .select('id')
 
   if (error) {
     console.error('[admin/blocked-dates/[id]] DELETE error:', error)
     return NextResponse.json({ error: 'Failed to delete blocked date' }, { status: 500 })
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Blocked date not found' }, { status: 404 })
   }
 
   return new NextResponse(null, { status: 204 })

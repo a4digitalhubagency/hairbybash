@@ -17,11 +17,14 @@ for (const key of REQUIRED_ENV_VARS) {
   }
 }
 
-// Stripe + app URL — warn only (needed before payments go live, not for basic site).
+// Stripe + app URL + email — warn only (needed before payments/emails go live).
 const RECOMMENDED_ENV_VARS = [
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'NEXT_PUBLIC_APP_URL',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
+  'RESEND_ADMIN_EMAIL',
 ] as const
 
 for (const key of RECOMMENDED_ENV_VARS) {
@@ -30,6 +33,18 @@ for (const key of RECOMMENDED_ENV_VARS) {
   }
 }
 
-const nextConfig: NextConfig = {}
+const supabaseHostname = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: supabaseHostname,
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
+}
 
 export default nextConfig

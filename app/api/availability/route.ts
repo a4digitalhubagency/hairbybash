@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const slots = await getAvailableSlots(date, serviceId)
+    const { slots, noFit, insufficientTime } = await getAvailableSlots(date, serviceId)
     return NextResponse.json(
-      { slots },
+      { slots, noFit, insufficientTime },
       { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (err) {

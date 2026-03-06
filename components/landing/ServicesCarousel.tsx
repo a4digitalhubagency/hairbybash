@@ -26,6 +26,7 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [translateX, setTranslateX] = useState(0)
   const [canNext, setCanNext] = useState(true)
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
 
@@ -187,15 +188,21 @@ export default function ServicesCarousel({ services }: { services: Service[] }) 
                   >
                     <Link
                       href={`/book?service=${service.id}`}
-                      className="group relative block aspect-3/4 rounded-2xl overflow-hidden"
+                      className="group relative block aspect-3/4 rounded-2xl overflow-hidden bg-dark-card"
                       onMouseEnter={() => setHoveredId(service.id)}
                       onMouseLeave={() => setHoveredId(null)}
                     >
+                      {!loadedImages.has(service.id) && (
+                        <div className="absolute inset-0 bg-white/8 animate-pulse" />
+                      )}
                       <Image
                         src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
                         alt={service.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        sizes="(max-width: 640px) 85vw, (max-width: 1024px) 45vw, 30vw"
+                        className={`object-cover transition-all duration-300 group-hover:scale-105 group-hover:duration-700 ${loadedImages.has(service.id) ? 'opacity-100' : 'opacity-0'}`}
+                        unoptimized={!!service.image_url}
+                        onLoad={() => setLoadedImages(prev => { const s = new Set(prev); s.add(service.id); return s })}
                       />
 
                       {/* Gradient */}

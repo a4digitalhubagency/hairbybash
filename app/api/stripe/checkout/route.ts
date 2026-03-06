@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { getAvailableSlots } from '@/lib/availability'
+import { getAppUrl } from '@/lib/url'
 
 interface CheckoutBody {
   serviceId: string
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
   // Re-run availability to prevent race conditions (two users booking the same slot).
   let slots
   try {
-    slots = await getAvailableSlots(date, serviceId)
+    ;({ slots } = await getAvailableSlots(date, serviceId))
   } catch {
     return NextResponse.json(
       { error: 'Unable to verify availability. Please try again.' },
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
   const depositWithGST = Math.round(depositBase * 1.05)
 
   // ── 7. Create Stripe Checkout session ─────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getAppUrl()
 
   let session
   try {

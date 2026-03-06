@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Booking, BookingStatus } from '@/types'
 import { formatPrice, formatDateShort, formatTime, formatDuration } from '@/lib/format'
@@ -41,6 +41,11 @@ export default function BookingsTable({
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
+  // Sync local state when the server re-fetches after router.refresh()
+  useEffect(() => {
+    setBookings(initialBookings)
+  }, [initialBookings])
+
   const addToast = useCallback((message: string, type: ToastMessage['type']) => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => [...prev, { id, message, type }])
@@ -51,6 +56,7 @@ export default function BookingsTable({
   }, [])
 
   async function updateStatus(id: string, status: 'confirmed' | 'cancelled') {
+    if (loadingId) return  // prevent concurrent updates
     const prev = bookings.find((b) => b.id === id)
     if (!prev) return
 
@@ -58,22 +64,27 @@ export default function BookingsTable({
     setLoadingId(id)
     setBookings((bs) => bs.map((b) => b.id === id ? { ...b, status } : b))
 
-    const res = await fetch(`/api/admin/bookings/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
 
-    setLoadingId(null)
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Failed to update booking')
+      }
 
-    if (!res.ok) {
-      // Revert
-      setBookings((bs) => bs.map((b) => b.id === id ? { ...b, status: prev.status } : b))
-      addToast('Failed to update booking. Please try again.', 'error')
-    } else {
       const verb = status === 'confirmed' ? 'Confirmed' : 'Cancelled'
       addToast(`${verb} ${prev.client_name}'s booking.`, 'success')
       router.refresh()
+    } catch (err) {
+      // Revert on any failure (network error, server error, etc.)
+      setBookings((bs) => bs.map((b) => b.id === id ? { ...b, status: prev.status } : b))
+      addToast(err instanceof Error ? err.message : 'Failed to update booking. Please try again.', 'error')
+    } finally {
+      setLoadingId(null)
     }
   }
 
@@ -93,7 +104,9 @@ export default function BookingsTable({
       <div className="bg-dark-card rounded-xl overflow-hidden">
         {/* Table header */}
         <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
-          <h2 className="font-semibold text-white">Upcoming Appointments</h2>
+          <h2 className="font-semibold text-white">
+            {filter === 'all' ? 'All Appointments' : 'Upcoming Appointments'}
+          </h2>
           {total > 0 && (
             <span className="text-gray-500 text-sm">
               Showing {start}–{end} of {total}

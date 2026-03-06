@@ -4,7 +4,7 @@ import Image from 'next/image'
 const EXPLORE_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Services Menu', href: '/services' },
-  { label: 'Portfolio', href: '/portfolio' },
+  { label: 'Contact', href: '/contact' },
   { label: 'Policies & FAQ', href: '/faq' },
 ]
 
