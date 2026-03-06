@@ -25,7 +25,7 @@ const channels = [
     label: 'Email',
     value: 'hello@hairbybash.ca',
     cta: 'Send a Message',
-    href: 'mailto:hello@hairbybash.ca',
+    href: 'mailto:hairbybash01@gmail.com',
     iconBg: 'bg-gold/10 border-gold/20',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
