@@ -76,10 +76,12 @@ export default function StepService({ services, selectedService, onSelect }: Ste
             >
               <p className="text-gold text-xl mb-3">✦</p>
               <p className="font-(family-name:--font-playfair) text-white text-lg font-semibold mb-2">
-                Kids Services Coming Soon
+                {activeCategory} Services Coming Soon
               </p>
               <p className="text-white/35 text-sm max-w-xs mx-auto leading-relaxed">
-                A dedicated children&apos;s menu is on its way. Contact us for early availability.
+                We&apos;re expanding our menu — check back soon or{' '}
+                <a href="/contact" className="text-gold hover:underline">contact us</a>{' '}
+                for availability.
               </p>
             </motion.div>
           ) : (

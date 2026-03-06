@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { formatPrice, formatDuration } from '@/lib/format'
 import Toast from '@/components/ui/Toast'
@@ -8,7 +9,7 @@ import type { ToastMessage } from '@/components/ui/Toast'
 import type { Service } from '@/types'
 
 const PAGE_SIZE = 5
-const CATEGORIES = ['Braids', 'Locs', 'Natural Hair', 'Treatments', 'Styling & Finishing', 'Other']
+const CATEGORIES = ['Braids', 'Locs', 'Twists', 'Cornrows', 'Kids', 'Other']
 const DESC_MAX = 300
 
 const DURATION_OPTIONS = [
@@ -622,7 +623,12 @@ interface Props {
 }
 
 export default function ServicesTable({ initialServices }: Props) {
+  const router = useRouter()
   const [services, setServices] = useState<Service[]>(initialServices)
+
+  // Keep local state in sync when the server re-renders this page (e.g. after router.refresh())
+  useEffect(() => { setServices(initialServices) }, [initialServices])
+
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [filterOpen, setFilterOpen] = useState(false)
@@ -768,6 +774,7 @@ export default function ServicesTable({ initialServices }: Props) {
         const { service } = await res.json()
         setServices((prev) => prev.map((s) => (s.id === editingService.id ? service : s)))
         addToast(`"${service.name}" updated`, 'success')
+        router.refresh()
       } else {
         const res = await fetch('/api/admin/services', {
           method: 'POST',
@@ -781,7 +788,10 @@ export default function ServicesTable({ initialServices }: Props) {
         const { service } = await res.json()
         setServices((prev) => [service, ...prev])
         addToast(`"${service.name}" created`, 'success')
+        setSearch('')
+        setCategoryFilter('all')
         setPage(1)
+        router.refresh()
       }
       setModalOpen(false)
     } catch (err) {
@@ -806,6 +816,7 @@ export default function ServicesTable({ initialServices }: Props) {
       setServices((prev) => prev.filter((s) => s.id !== editingService.id))
       addToast(`"${editingService.name}" deleted`, 'success')
       setModalOpen(false)
+      router.refresh()
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to delete service', 'error')
     } finally {

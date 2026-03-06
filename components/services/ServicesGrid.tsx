@@ -141,11 +141,12 @@ export default function ServicesGrid({ services }: { services: Service[] }) {
           >
             <p className="text-gold text-2xl mb-4">✦</p>
             <h3 className="font-(family-name:--font-playfair) text-white text-2xl font-semibold mb-3">
-              Kids Services Coming Soon
+              {activeCategory} Services Coming Soon
             </h3>
             <p className="text-white/40 text-sm max-w-sm mx-auto leading-relaxed">
-              We&apos;re preparing a dedicated menu of gentle, child-friendly styles.
-              Check back shortly or contact us for availability.
+              We&apos;re expanding our menu. Check back shortly or{' '}
+              <a href="/contact" className="text-gold hover:underline">contact us</a>{' '}
+              for availability.
             </p>
           </motion.div>
         )}
