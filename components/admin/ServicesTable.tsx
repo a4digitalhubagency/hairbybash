@@ -100,18 +100,25 @@ function Toggle({
 // ── Image thumbnail ──────────────────────────────────────────────────────────
 
 function ServiceThumb({ service }: { service: Service }) {
+  const [loaded, setLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const letter = service.name[0]?.toUpperCase() ?? '?'
 
   if (service.image_url && !imgError) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={service.image_url}
-        alt={service.name}
-        onError={() => setImgError(true)}
-        className="w-10 h-10 rounded-lg object-cover shrink-0 bg-dark-card"
-      />
+      <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-dark-card">
+        {!loaded && (
+          <div className="absolute inset-0 bg-white/8 animate-pulse" />
+        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={service.image_url}
+          alt={service.name}
+          onLoad={() => setLoaded(true)}
+          onError={() => setImgError(true)}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        />
+      </div>
     )
   }
   return (

@@ -14,6 +14,35 @@ interface StepServiceProps {
   onSelect: (service: Service) => void
 }
 
+function ServiceThumbnail({ service, isSelected }: { service: Service; isSelected: boolean }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-dark-card">
+      {!loaded && <div className="absolute inset-0 bg-white/8 animate-pulse" />}
+      <Image
+        src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
+        alt={service.name}
+        fill
+        className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        sizes="80px"
+        unoptimized={!!service.image_url}
+        onLoad={() => setLoaded(true)}
+      />
+      {isSelected && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute inset-0 bg-gold/30 flex items-center justify-center"
+        >
+          <svg className="w-6 h-6 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
 export default function StepService({ services, selectedService, onSelect }: StepServiceProps) {
   const [activeCategory, setActiveCategory] = useState('All')
 
@@ -102,27 +131,7 @@ export default function StepService({ services, selectedService, onSelect }: Ste
                     }`}
                   >
                     {/* Thumbnail */}
-                    <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
-                      <Image
-                        src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
-                        alt={service.name}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                        unoptimized={!!service.image_url}
-                      />
-                      {isSelected && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute inset-0 bg-gold/30 flex items-center justify-center"
-                        >
-                          <svg className="w-6 h-6 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </motion.div>
-                      )}
-                    </div>
+                    <ServiceThumbnail service={service} isSelected={isSelected} />
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">

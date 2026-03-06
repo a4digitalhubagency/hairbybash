@@ -19,6 +19,55 @@ function formatDuration(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+function ServiceCard({ service, i }: { service: Service; i: number }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.05, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className="bg-dark-card rounded-2xl overflow-hidden border border-white/5 flex flex-col"
+    >
+      <div className="relative aspect-square bg-dark-card">
+        {!loaded && <div className="absolute inset-0 bg-white/8 animate-pulse" />}
+        <Image
+          src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
+          alt={service.name}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          unoptimized={!!service.image_url}
+          onLoad={() => setLoaded(true)}
+        />
+        <div className="absolute top-3 right-3">
+          <span className="bg-black/65 backdrop-blur-sm text-white/90 text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-wide">
+            {formatDuration(service.duration_minutes)}
+          </span>
+        </div>
+      </div>
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-(family-name:--font-playfair) text-white font-semibold text-base leading-snug">
+            {service.name}
+          </h3>
+          <span className="text-gold text-sm font-semibold shrink-0 mt-0.5">
+            {formatPrice(service.price)}+
+          </span>
+        </div>
+        <p className="text-white/45 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">
+          {service.description}
+        </p>
+        <Link
+          href={`/book?service=${service.id}`}
+          className="block text-center py-2.5 border border-gold/70 text-gold text-[11px] font-bold uppercase tracking-widest rounded-lg hover:bg-gold hover:text-black hover:border-gold transition-all duration-300"
+        >
+          Book Now
+        </Link>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function ServicesGrid({ services }: { services: Service[] }) {
   const [activeCategory, setActiveCategory] = useState('All Services')
 
@@ -73,61 +122,7 @@ export default function ServicesGrid({ services }: { services: Service[] }) {
             className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
           >
             {filtered.map((service, i) => (
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, y: 22 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: i * 0.05,
-                  duration: 0.4,
-                  ease: [0.25, 0.46, 0.45, 0.94],
-                }}
-                className="bg-dark-card rounded-2xl overflow-hidden border border-white/5 flex flex-col"
-              >
-                {/* Image */}
-                <div className="relative aspect-square">
-                  <Image
-                    src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
-                    alt={service.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
-                    unoptimized={!!service.image_url}
-                  />
-                  {/* Duration badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className="bg-black/65 backdrop-blur-sm text-white/90 text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-wide">
-                      {formatDuration(service.duration_minutes)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-4 flex flex-col flex-1">
-                  {/* Name + price */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-(family-name:--font-playfair) text-white font-semibold text-base leading-snug">
-                      {service.name}
-                    </h3>
-                    <span className="text-gold text-sm font-semibold shrink-0 mt-0.5">
-                      {formatPrice(service.price)}+
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-white/45 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">
-                    {service.description}
-                  </p>
-
-                  {/* Book Now */}
-                  <Link
-                    href={`/book?service=${service.id}`}
-                    className="block text-center py-2.5 border border-gold/70 text-gold text-[11px] font-bold uppercase tracking-widest rounded-lg hover:bg-gold hover:text-black hover:border-gold transition-all duration-300"
-                  >
-                    Book Now
-                  </Link>
-                </div>
-              </motion.div>
+              <ServiceCard key={service.id} service={service} i={i} />
             ))}
           </motion.div>
         </AnimatePresence>
