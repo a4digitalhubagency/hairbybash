@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   title: "HairbyBash — Calgary Braider & Loctician",
   description:
     "Elevating your crown with precision braids and loc maintenance. Experience luxury hair care tailored specifically to you.",
+  icons: {
+    icon: '/images/hairbybashlogo-removebg-preview.png',
+    apple: '/images/hairbybashlogo-removebg-preview.png',
+  },
 };
 
 export default function RootLayout({

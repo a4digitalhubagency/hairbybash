@@ -55,7 +55,7 @@ export default function ConfirmationCard({ booking: initialBooking, sessionId }:
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href="mailto:hello@hairbybash.ca"
+            href="mailto:hairbybash01@gmail.com"
             className="px-6 py-3 bg-gold text-black font-semibold text-sm rounded hover:bg-gold-hover transition-colors"
           >
             Contact Us

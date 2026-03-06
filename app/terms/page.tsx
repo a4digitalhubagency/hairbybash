@@ -169,8 +169,8 @@ export default function TermsPage() {
                   Contact page
                 </Link>{' '}
                 or email{' '}
-                <a href="mailto:hello@hairbybash.ca" className="text-gold hover:underline">
-                  hello@hairbybash.ca
+                <a href="mailto:hairbybash01@gmail.com" className="text-gold hover:underline">
+                  hairbybash01@gmail.com
                 </a>
                 .
               </p>

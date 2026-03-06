@@ -64,7 +64,7 @@ export default function Footer() {
                 <span className="mt-0.5">🏠</span> Private Studio (address upon booking)
               </li>
               <li className="flex items-start gap-2 text-white/45 text-sm">
-                <span className="mt-0.5">✉️</span> hello@hairbybash.ca
+                <span className="mt-0.5">✉️</span> hairbybash01@gmail.com
               </li>
               <li className="flex items-start gap-2 text-white/45 text-sm">
                 <span className="mt-0.5">🕐</span> Mon–Sun, 9am–6pm
