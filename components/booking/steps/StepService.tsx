@@ -109,6 +109,7 @@ export default function StepService({ services, selectedService, onSelect }: Ste
                         fill
                         className="object-cover"
                         sizes="80px"
+                        unoptimized={!!service.image_url}
                       />
                       {isSelected && (
                         <motion.div

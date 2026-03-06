@@ -92,6 +92,7 @@ export default function ServicesGrid({ services }: { services: Service[] }) {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
+                    unoptimized={!!service.image_url}
                   />
                   {/* Duration badge */}
                   <div className="absolute top-3 right-3">
