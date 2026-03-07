@@ -55,16 +55,12 @@ export default function AboutJourney() {
           {milestones.map((m, i) => (
             <motion.div
               key={m.title}
-              className="relative bg-dark-card border border-white/6 rounded-2xl p-7 hover:border-gold/30 transition-colors duration-300 group"
+              className="bg-dark-card border border-white/6 rounded-2xl p-7 hover:border-gold/30 transition-colors duration-300 group"
               initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={viewport}
               transition={{ duration: 0.55, delay: i * 0.12, ease }}
             >
-              {/* Step number */}
-              <div className="absolute -top-3 left-6 bg-dark-card border border-gold/25 rounded-full w-6 h-6 flex items-center justify-center">
-                <span className="text-gold text-[10px] font-bold">{i + 1}</span>
-              </div>
 
               {/* Icon */}
               <div className="w-9 h-9 rounded-full bg-gold/8 border border-gold/20 flex items-center justify-center mb-5 group-hover:bg-gold/15 transition-colors duration-300">
