@@ -55,7 +55,7 @@ export default function AboutStory() {
   {/* Image container (same concept as Hero) */}
      <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-dark-card">
     <Image
-      src="/images/about/User.jpg"
+      src="/images/about/about2.webp"
       alt="Workspace image"
       fill
       className="object-cover"
