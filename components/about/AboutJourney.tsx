@@ -1,38 +1,38 @@
-// components/about/AboutJourney.tsx - CORRECTED
+// components/about/AboutJourney.tsx
 'use client'
 
 import { motion } from 'framer-motion'
 
 const ease = [0.25, 0.46, 0.45, 0.94] as const
-const viewport = { once: true, margin: '-80px' } as const
+const viewport = { once: true, margin: '-60px' } as const
 
 const milestones = [
   {
     icon: '✦',
-    title: 'London Training',
-    description: 'Professional training at Vidal Sassoon and apprenticeship at luxury salons in Mayfair.',
-    year: '2012-2014',
+    year: 'The Beginning',
+    title: 'Passion Ignited',
+    description: "Bash's love for braiding and hair artistry began early — turning a natural gift into dedicated craft, mastering techniques through hands-on experience and relentless practice.",
   },
   {
     icon: '✦',
-    title: 'Boutique Launch',
-    description: 'HairbyBash began its journey in St. John’s, Newfoundland, where we first introduced our signature styling techniques. In 2023, we expanded our footprint, bringing our premium hair care services to the vibrant community of Calgary, Alberta',
-    year: '2016',
+    year: 'St. John\'s, NL',
+    title: 'HairbyBash Is Born',
+    description: 'HairbyBash launched in St. John\'s, Newfoundland — introducing signature protective styles and building a loyal clientele through precision, care, and a deeply personal touch.',
   },
   {
     icon: '✦',
-    title: 'Master Artistry',
-    description: 'Recognized as a leading educator and stylist, training the next generation of hair artists.',
-    year: 'Present',
+    year: 'Calgary, AB · 2023',
+    title: 'Expanding the Crown',
+    description: 'Bringing the HairbyBash experience to Calgary — a private, premium studio offering world-class braiding and loc services to a new community of clients.',
   },
 ]
 
 export default function AboutJourney() {
   return (
-    <section className="py-20 px-6 bg-dark">
+    <section className="py-24 px-6 bg-dark-surface/30">
       <div className="max-w-5xl mx-auto">
-        
-        {/* Section Header */}
+
+        {/* Section header */}
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
@@ -40,38 +40,44 @@ export default function AboutJourney() {
           viewport={viewport}
           transition={{ duration: 0.6, ease }}
         >
-          <h2 className="font-(family-name:--font-playfair) font-bold text-3xl md:text-4xl text-white">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="h-px bg-gold w-6" />
+            <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-medium">The Path</span>
+            <div className="h-px bg-gold w-6" />
+          </div>
+          <h2 className="font-(family-name:--font-playfair) font-bold text-4xl md:text-5xl text-white">
             My Journey
           </h2>
         </motion.div>
 
-        {/* Timeline Cards */}
+        {/* Timeline */}
         <div className="grid md:grid-cols-3 gap-6">
-          {milestones.map((milestone, i) => (
+          {milestones.map((m, i) => (
             <motion.div
-              key={milestone.title}
-              className="group bg-dark-card border border-white/8 rounded-2xl p-6 hover:bg-gold transition-colors duration-2000 ease-in"
-              initial={{ opacity: 0, y: 30 }}
+              key={m.title}
+              className="bg-dark-card border border-white/6 rounded-2xl p-7 hover:border-gold/30 transition-colors duration-300 group"
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={viewport}
-              transition={{ duration: 0.5, delay: i * 0.1, ease }}
+              transition={{ duration: 0.55, delay: i * 0.12, ease }}
             >
+
               {/* Icon */}
-              <div className="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 group-hover:bg-black/10 group-hover:border-black/20 flex items-center justify-center mb-4 transition-colors duration-2000 ease-in">
-                <span className="text-gold group-hover:text-black text-sm transition-colors duration-2000 ease-in">{milestone.icon}</span>
+              <div className="w-9 h-9 rounded-full bg-gold/8 border border-gold/20 flex items-center justify-center mb-5 group-hover:bg-gold/15 transition-colors duration-300">
+                <span className="text-gold text-xs">{m.icon}</span>
               </div>
 
-              {/* Content */}
-              <h3 className="font-(family-name:--font-playfair) font-semibold text-xl text-white group-hover:text-black mb-3 transition-colors duration-2000 ease-in">
-                {milestone.title}
-              </h3>
-              <p className="text-white/50 group-hover:text-black/60 text-sm leading-relaxed mb-4 transition-colors duration-2000 ease-in">
-                {milestone.description}
-              </p>
+              {/* Year badge */}
+              <p className="text-gold text-[10px] font-semibold tracking-[0.2em] uppercase mb-2">{m.year}</p>
 
-              {/* Year */}
-              <p className="text-gold group-hover:text-black text-xs tracking-wider uppercase transition-colors duration-2000 ease-in">
-                {milestone.year}
+              {/* Title */}
+              <h3 className="font-(family-name:--font-playfair) font-semibold text-lg text-white mb-3 leading-snug">
+                {m.title}
+              </h3>
+
+              {/* Body */}
+              <p className="text-white/45 text-sm leading-[1.75]">
+                {m.description}
               </p>
             </motion.div>
           ))}
