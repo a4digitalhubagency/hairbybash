@@ -46,6 +46,12 @@ export default function BookingsTable({
     setBookings(initialBookings)
   }, [initialBookings])
 
+  // Auto-refresh every 30s so webhook-confirmed bookings appear without manual reload
+  useEffect(() => {
+    const interval = setInterval(() => router.refresh(), 30_000)
+    return () => clearInterval(interval)
+  }, [router])
+
   const addToast = useCallback((message: string, type: ToastMessage['type']) => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => [...prev, { id, message, type }])
