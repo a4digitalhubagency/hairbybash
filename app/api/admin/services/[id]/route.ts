@@ -47,7 +47,7 @@ const BUCKET = 'service-images'
 const SUPABASE_STORAGE_PREFIX = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const supabase = await createClient()
@@ -55,7 +55,26 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const force = req.nextUrl.searchParams.get('force') === 'true'
   const admin = createAdminClient()
+
+  // Guard: check for upcoming bookings unless force=true
+  if (!force) {
+    const today = new Date().toISOString().slice(0, 10)
+    const { count } = await admin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('service_id', id)
+      .gte('booking_date', today)
+      .in('status', ['pending', 'confirmed'])
+
+    if ((count ?? 0) > 0) {
+      return NextResponse.json(
+        { error: 'Service has upcoming bookings', bookingCount: count },
+        { status: 409 },
+      )
+    }
+  }
 
   // Fetch the service first so we can clean up its storage image if needed
   const { data: service } = await admin
@@ -80,5 +99,5 @@ export async function DELETE(
     await admin.storage.from(BUCKET).remove([storagePath])
   }
 
-  return new NextResponse(null, { status: 204 })
+  return NextResponse.json({ deleted: true })
 }
