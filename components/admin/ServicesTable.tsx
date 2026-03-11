@@ -154,25 +154,125 @@ function Field({ label, required, children }: { label: string; required?: boolea
 const inputCls = 'w-full bg-dark border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-gold/40 transition-colors'
 const selectCls = `${inputCls} appearance-none`
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+
+interface DeleteConfirmProps {
+  service: Service
+  deleting: boolean
+  onConfirm: (force: boolean) => void
+  onCancel: () => void
+}
+
+function DeleteConfirmModal({ service, deleting, onConfirm, onCancel }: DeleteConfirmProps) {
+  const [phase, setPhase] = useState<'confirm' | 'warning'>('confirm')
+  const [bookingCount, setBookingCount] = useState<number | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !deleting && !checking) onCancel() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [deleting, checking, onCancel])
+
+  async function handleFirstConfirm() {
+    setChecking(true)
+    try {
+      const res = await fetch(`/api/admin/services/${service.id}`, { method: 'DELETE' })
+      if (res.status === 409) {
+        const json = await res.json().catch(() => ({}))
+        setBookingCount(json.bookingCount ?? 1)
+        setPhase('warning')
+        return
+      }
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Failed to delete service')
+      }
+      onConfirm(false)
+    } catch (err) {
+      onConfirm(false) // propagate — parent handles toast
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { if (!deleting && !checking) onCancel() }} aria-hidden />
+      <div className="relative w-full max-w-sm bg-dark-surface border border-white/10 rounded-2xl shadow-2xl p-6">
+
+        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+
+        {phase === 'confirm' ? (
+          <>
+            <h3 className="text-white font-semibold text-center text-base mb-1">Delete Service?</h3>
+            <p className="text-white/50 text-sm text-center mb-6">
+              <span className="text-white font-medium">&ldquo;{service.name}&rdquo;</span> will be permanently removed from your menu and cannot be recovered.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={onCancel} disabled={deleting || checking} className="flex-1 px-4 py-2.5 border border-white/15 text-white/60 text-sm font-medium rounded-xl hover:border-white/30 hover:text-white transition-colors disabled:opacity-40">
+                Cancel
+              </button>
+              <button onClick={handleFirstConfirm} disabled={deleting || checking} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+                {checking
+                  ? <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Checking…</>
+                  : 'Delete Permanently'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="text-white font-semibold text-center text-base mb-1">Service Has Upcoming Bookings</h3>
+            <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 mb-6">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <p className="text-amber-300 text-xs leading-relaxed">
+                  <span className="font-semibold">&ldquo;{service.name}&rdquo;</span> has{' '}
+                  <span className="font-semibold">{bookingCount} upcoming appointment{bookingCount !== 1 ? 's' : ''}</span>.
+                  Deleting it will not cancel those bookings — contact those clients manually.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onCancel} disabled={deleting} className="flex-1 px-4 py-2.5 border border-white/15 text-white/60 text-sm font-medium rounded-xl hover:border-white/30 hover:text-white transition-colors disabled:opacity-40">
+                Cancel
+              </button>
+              <button onClick={() => onConfirm(true)} disabled={deleting} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+                {deleting
+                  ? <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Deleting…</>
+                  : 'Delete Anyway'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Service edit modal ────────────────────────────────────────────────────────
 
 interface ModalProps {
   editing: Service | null
   form: ServiceForm
   saving: boolean
-  deleting: boolean
   onChange: (f: ServiceForm) => void
   onSave: () => void
-  onDelete: () => void
+  onRequestDelete: () => void
   onClose: () => void
   addToast: (message: string, type: ToastMessage['type']) => void
 }
 
-function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDelete, onClose, addToast }: ModalProps) {
+function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete, onClose, addToast }: ModalProps) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const blobUrlRef = useRef<string | null>(null)
 
   // Guard close — never interrupt an in-flight upload
@@ -563,59 +663,35 @@ function ServiceModal({ editing, form, saving, deleting, onChange, onSave, onDel
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-white/8 flex items-center gap-3 shrink-0">
-            {editing && !confirmDelete && (
+            {editing && (
               <button
-                onClick={() => setConfirmDelete(true)}
-                disabled={deleting || saving || uploading}
-                className="text-red-400 text-sm font-medium hover:bg-red-500/10 px-3 py-2 rounded-xl transition-colors disabled:opacity-40"
+                onClick={onRequestDelete}
+                disabled={saving || uploading}
+                className="text-red-400/70 text-sm font-medium hover:text-red-400 hover:bg-red-500/10 px-3 py-2 rounded-xl transition-colors disabled:opacity-40"
               >
-                Delete Service
+                Delete
               </button>
             )}
-
-            {/* Two-step delete confirmation */}
-            {editing && confirmDelete && (
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs">This can&apos;t be undone.</span>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  disabled={deleting}
-                  className="px-3 py-1.5 text-white/50 text-xs font-medium hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-40"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={onDelete}
-                  disabled={deleting}
-                  className="px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
-                >
-                  {deleting ? 'Deleting…' : 'Yes, Delete'}
-                </button>
-              </div>
-            )}
-
-            {!confirmDelete && (
-              <div className="ml-auto flex items-center gap-3">
-                <button
-                  onClick={handleClose}
-                  disabled={saving || deleting}
-                  className="px-4 py-2 text-white/50 text-sm font-medium hover:text-white hover:bg-white/5 rounded-xl transition-colors disabled:opacity-40"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={onSave}
-                  disabled={saving || deleting || uploading}
-                  className="flex items-center gap-2 px-5 py-2 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold-hover transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v4H7V3M12 12v5m0 0l-2-2m2 2l2-2" />
-                  </svg>
-                  {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Service'}
-                </button>
-              </div>
-            )}
+            <div className="ml-auto flex items-center gap-3">
+              <button
+                onClick={handleClose}
+                disabled={saving}
+                className="px-4 py-2 text-white/50 text-sm font-medium hover:text-white hover:bg-white/5 rounded-xl transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onSave}
+                disabled={saving || uploading}
+                className="flex items-center gap-2 px-5 py-2 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold-hover transition-colors disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v4H7V3M12 12v5m0 0l-2-2m2 2l2-2" />
+                </svg>
+                {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Service'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -649,6 +725,7 @@ export default function ServicesTable({ initialServices }: Props) {
   const [form, setForm] = useState<ServiceForm>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Service | null>(null)
 
   const addToast = useCallback((message: string, type: ToastMessage['type']) => {
     const id = Math.random().toString(36).slice(2)
@@ -810,22 +887,26 @@ export default function ServicesTable({ initialServices }: Props) {
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
-  async function handleDelete() {
-    if (!editingService) return
-    setDeletingId(editingService.id)
+  async function handleDelete(force: boolean) {
+    const target = deleteTarget
+    if (!target) return
+    setDeletingId(target.id)
 
     try {
-      const res = await fetch(`/api/admin/services/${editingService.id}`, { method: 'DELETE' })
+      const url = `/api/admin/services/${target.id}${force ? '?force=true' : ''}`
+      const res = await fetch(url, { method: 'DELETE' })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error ?? 'Failed to delete service')
       }
-      setServices((prev) => prev.filter((s) => s.id !== editingService.id))
-      addToast(`"${editingService.name}" deleted`, 'success')
+      setServices((prev) => prev.filter((s) => s.id !== target.id))
+      addToast(`"${target.name}" deleted`, 'success')
+      setDeleteTarget(null)
       setModalOpen(false)
       router.refresh()
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Failed to delete service', 'error')
+      setDeleteTarget(null)
     } finally {
       setDeletingId(null)
     }
@@ -842,12 +923,20 @@ export default function ServicesTable({ initialServices }: Props) {
           editing={editingService}
           form={form}
           saving={saving}
-          deleting={!!deletingId}
           onChange={setForm}
           onSave={handleSave}
-          onDelete={handleDelete}
+          onRequestDelete={() => { if (editingService) setDeleteTarget(editingService) }}
           onClose={closeModal}
           addToast={addToast}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirmModal
+          service={deleteTarget}
+          deleting={!!deletingId}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
 
