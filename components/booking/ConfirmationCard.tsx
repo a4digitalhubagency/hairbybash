@@ -73,6 +73,9 @@ export default function ConfirmationCard({ booking: initialBooking, sessionId }:
 
   const service = booking.service
   const isPending = booking.status !== 'confirmed'
+  const maxRetriesHit = isPending && retries >= MAX_RETRIES
+  // Payment went through (Stripe redirected us here) — stop the spinner once retries exhaust
+  const showSpinner = isPending && !maxRetriesHit
   const deposit = service
     ? calculateDeposit(service.price, service.deposit_percentage)
     : null
@@ -88,7 +91,7 @@ export default function ConfirmationCard({ booking: initialBooking, sessionId }:
       >
         {/* Icon */}
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-gold mb-4 relative">
-          {isPending ? (
+          {showSpinner ? (
             <span className="w-6 h-6 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
           ) : (
             <motion.div
