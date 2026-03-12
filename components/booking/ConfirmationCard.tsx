@@ -200,7 +200,7 @@ export default function ConfirmationCard({ booking: initialBooking, sessionId }:
           <div>
             <p className="text-white text-sm font-medium">Studio Location</p>
             <p className="text-white/40 text-xs mt-0.5">
-              123 17th Ave SW, Calgary, AB T2T 0B8
+              55 Edith Pass NW, Calgary, AB T3R 2B5
             </p>
             <p className="text-white/30 text-xs mt-2">
               Full address details included in your confirmation email.
