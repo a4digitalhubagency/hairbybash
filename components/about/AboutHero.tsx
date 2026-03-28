@@ -85,7 +85,7 @@ export default function AboutHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.38, ease }}
         >
-          Redefining luxury hair artistry in the heart of Calgary — one crown at a time.
+          Redefining luxury hair artistry in the heart of Calgary — one masterpiece at a time.
         </motion.p>
 
         {/* Stats row */}

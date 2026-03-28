@@ -108,7 +108,7 @@ export default function About() {
             viewport={viewport}
             transition={{ duration: 0.5, delay: 0.24, ease }}
           >
-            At HairbyBash, we believe that your hair is your crown. Located in the
+            At HairbyBash, we believe that your hair is your finest expression. Located in the
             heart of Calgary, we specialize in protective styling that not only looks
             stunning but promotes healthy hair growth.
           </motion.p>
@@ -119,7 +119,7 @@ export default function About() {
             viewport={viewport}
             transition={{ duration: 0.5, delay: 0.32, ease }}
           >
-            From intricate knotless braids to meticulous loc maintenance, every
+            From intricate knotless braids to meticulous loc artistry, every
             appointment is a private, premium session focused entirely on you.
             No double bookings, no rushing — just perfection.
           </motion.p>
