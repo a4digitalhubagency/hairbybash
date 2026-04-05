@@ -23,6 +23,8 @@ interface BookingState {
   clientName: string
   clientEmail: string
   clientPhone: string
+  /** null = not yet answered; true = yes (will be charged in person); false = no */
+  blowDryRequested: boolean | null
   formErrors: Partial<Record<'clientName' | 'clientEmail' | 'clientPhone', string>>
   checkoutLoading: boolean
 }
@@ -47,6 +49,7 @@ function getInitialState(
     clientName: '',
     clientEmail: '',
     clientPhone: '',
+    blowDryRequested: null,
     formErrors: {},
     checkoutLoading: false,
   }
@@ -103,14 +106,15 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
 
   // ── Step navigation ────────────────────────────────────────────────────────
   function canAdvance(): boolean {
-    const { currentStep, selectedService, selectedDate, selectedSlot, clientName, clientEmail, clientPhone } = state
+    const { currentStep, selectedService, selectedDate, selectedSlot, clientName, clientEmail, clientPhone, blowDryRequested } = state
     switch (currentStep) {
       case 'service':  return selectedService !== null
       case 'datetime': return selectedDate !== null && selectedSlot !== null
       case 'details':  return (
         clientName.trim().length >= 2 &&
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) &&
-        clientPhone.replace(/\D/g, '').length >= 10
+        clientPhone.replace(/\D/g, '').length >= 10 &&
+        blowDryRequested !== null  // must answer the blow dry question
       )
       case 'review':   return true
     }
@@ -175,6 +179,10 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
     }))
   }
 
+  function handleBlowDryChange(value: boolean) {
+    setState((s) => ({ ...s, blowDryRequested: value }))
+  }
+
   function handleFieldBlur(field: 'clientName' | 'clientEmail' | 'clientPhone') {
     const { clientName, clientEmail, clientPhone } = state
     const errors: typeof state.formErrors = {}
@@ -193,7 +201,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
   }
 
   const handleCheckout = useCallback(async () => {
-    const { selectedService, selectedDate, selectedSlot, clientName, clientEmail, clientPhone } = state
+    const { selectedService, selectedDate, selectedSlot, clientName, clientEmail, clientPhone, blowDryRequested } = state
     if (!selectedService || !selectedDate || !selectedSlot) return
 
     setState((s) => ({ ...s, checkoutLoading: true }))
@@ -210,6 +218,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
           clientName,
           clientEmail,
           clientPhone,
+          blowDryRequested: blowDryRequested ?? false,
         }),
       })
 
@@ -312,9 +321,11 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
                     clientName={state.clientName}
                     clientEmail={state.clientEmail}
                     clientPhone={state.clientPhone}
+                    blowDryRequested={state.blowDryRequested}
                     formErrors={state.formErrors}
                     onChange={handleFieldChange}
                     onBlur={handleFieldBlur}
+                    onBlowDryChange={handleBlowDryChange}
                     onBack={goBack}
                   />
                 )}
@@ -330,6 +341,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
                       clientName={state.clientName}
                       clientEmail={state.clientEmail}
                       clientPhone={state.clientPhone}
+                      blowDryRequested={state.blowDryRequested ?? false}
                       checkoutLoading={state.checkoutLoading}
                       onConfirm={handleCheckout}
                       onBack={goBack}

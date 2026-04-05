@@ -90,7 +90,6 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.4, ease }}
         >
           Elevating your Allure with precision braids and locs.
-          Every appointment is a luxury experience crafted just for you.
         </motion.p>
 
         {/* CTAs */}

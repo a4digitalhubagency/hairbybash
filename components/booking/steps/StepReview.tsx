@@ -10,6 +10,7 @@ interface StepReviewProps {
   clientName: string
   clientEmail: string
   clientPhone: string
+  blowDryRequested: boolean
   checkoutLoading: boolean
   onConfirm: () => void
   onBack: () => void
@@ -31,6 +32,7 @@ export default function StepReview({
   clientName,
   clientEmail,
   clientPhone,
+  blowDryRequested,
   checkoutLoading,
   onConfirm,
   onBack,
@@ -71,6 +73,9 @@ export default function StepReview({
             label="Time"
             value={`${formatTime(selectedSlot.start)} – ${formatTime(selectedSlot.end)}`}
           />
+          {blowDryRequested && (
+            <ReviewRow label="Blow Dry Add-On" value="Charged in person on the day" />
+          )}
         </div>
 
         {/* Client details card */}
@@ -128,12 +133,42 @@ export default function StepReview({
           )}
         </button>
 
-        {/* Policy note */}
-        <p className="text-white/25 text-xs leading-relaxed">
-          By confirming, you agree to our cancellation policy. Deposits are non-refundable
-          within 48 hours of your scheduled appointment. You will be redirected to Stripe
-          for secure payment.
-        </p>
+        {/* Policy block */}
+        <div className="bg-dark-card border border-white/8 rounded-2xl px-5 py-4 space-y-3">
+          <p className="text-white/50 text-[10px] uppercase tracking-widest font-medium">Booking Policies</p>
+
+          <div className="space-y-2.5">
+            <div className="flex gap-2.5">
+              <span className="text-gold mt-0.5 shrink-0 text-xs">•</span>
+              <p className="text-white/40 text-xs leading-relaxed">
+                <span className="text-white/60 font-medium">Non-refundable deposit —</span>{' '}
+                Your deposit is non-refundable under any circumstances.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5">
+              <span className="text-gold mt-0.5 shrink-0 text-xs">•</span>
+              <p className="text-white/40 text-xs leading-relaxed">
+                <span className="text-white/60 font-medium">Late arrival —</span>{' '}
+                A 1-hour buffer is built into each appointment. Arriving 30 or more minutes late forfeits
+                your deposit and the full service price becomes due at booking.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5">
+              <span className="text-gold mt-0.5 shrink-0 text-xs">•</span>
+              <p className="text-white/40 text-xs leading-relaxed">
+                <span className="text-white/60 font-medium">Rescheduling —</span>{' '}
+                One reschedule is permitted provided it is requested more than 48 hours before your
+                scheduled appointment. Contact us to arrange.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-white/25 text-xs pt-1 leading-relaxed">
+            By confirming you agree to the above policies. You will be redirected to Stripe for secure payment.
+          </p>
+        </div>
       </div>
     </div>
   )

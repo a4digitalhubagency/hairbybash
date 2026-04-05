@@ -26,6 +26,10 @@ export interface Booking {
   status: BookingStatus
   payment_status: PaymentStatus
   stripe_session_id: string | null
+  /** Client indicated hair will be detangled & blow dried before appointment. Charged in person. */
+  blow_dry_requested: boolean
+  /** Whether the client has used their one-time reschedule (must be >48h before appointment). */
+  reschedule_used: boolean
   created_at: string
   // joined
   service?: Service

@@ -63,13 +63,15 @@ export async function getAvailableSlots(
       .neq('status', 'cancelled'),
   ])
 
-  // Date is closed (no weekly_availability) or explicitly blocked → no slots
+  // Surface DB errors — these are not "no availability" situations
+  if (availRes.error) throw new Error(`Availability query failed: ${availRes.error.message}`)
+  if (blockedRes.error) throw new Error(`Blocked dates query failed: ${blockedRes.error.message}`)
+  if (serviceRes.error || !serviceRes.data) throw new Error('Service not found')
+  if (bookingsRes.error) throw new Error(`Bookings query failed: ${bookingsRes.error.message}`)
+
+  // Date is closed (no weekly_availability row) or explicitly blocked → no slots
   if (!availRes.data) return { slots: [], noFit: false, insufficientTime: false }
   if (blockedRes.data) return { slots: [], noFit: false, insufficientTime: false }
-
-  if (serviceRes.error || !serviceRes.data) {
-    throw new Error('Service not found')
-  }
 
   const openMin = timeToMinutes(availRes.data.start_time)
   const closeMin = timeToMinutes(availRes.data.end_time)
@@ -80,10 +82,16 @@ export async function getAvailableSlots(
   // between selectable start times.
   const STRIDE = 60
 
-  // Build occupied ranges from existing bookings
+  // 1-hour mandatory break between appointments.
+  // This gives Bash buffer for late-running sessions, cleanup, and late arrivals.
+  // The stored end_time in the DB is the real service end — the buffer only affects
+  // what new slots are offered to incoming clients.
+  const BREAK_MINUTES = 60
+
+  // Build occupied ranges from existing bookings, extending each end by the break buffer
   const occupied: Array<{ start: number; end: number }> = (bookingsRes.data ?? []).map((b) => ({
     start: timeToMinutes(b.start_time),
-    end: timeToMinutes(b.end_time),
+    end: timeToMinutes(b.end_time) + BREAK_MINUTES,
   }))
 
   // Current time in minutes (for filtering past slots on today's date)

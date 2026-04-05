@@ -169,6 +169,10 @@ export default function ConfirmationCard({ booking: initialBooking, sessionId }:
           {service && (
             <Row label="Duration" value={formatDuration(service.duration_minutes)} />
           )}
+          <Row
+            label="Blow Dry"
+            value={booking.blow_dry_requested ? 'Yes — charged in person' : 'No'}
+          />
           {deposit && (
             <Row
               label="Deposit paid"
