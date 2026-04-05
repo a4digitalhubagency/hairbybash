@@ -69,6 +69,18 @@ export default function BookingConfirmedClient({ booking }: Props) {
               <Column style={detailLabel}>Duration</Column>
               <Column style={detailValue}>{formatDuration(service.duration_minutes)}</Column>
             </Row>
+            <Row style={detailRow}>
+              <Column style={detailLabel}>Blow Dry</Column>
+              <Column style={detailValue}>
+                {booking.blow_dry_requested
+                  ? 'Yes — add-on fee charged in person'
+                  : 'No — hair will be ready'}
+              </Column>
+            </Row>
+            <Row style={detailRow}>
+              <Column style={detailLabel}>Studio</Column>
+              <Column style={detailValue}>55 Edith Pass NW, Calgary, AB T3R 2B5</Column>
+            </Row>
           </Section>
 
           <Hr style={divider} />
@@ -108,6 +120,24 @@ export default function BookingConfirmedClient({ booking }: Props) {
 
           <Hr style={divider} />
 
+          {/* Booking policies */}
+          <Section style={section}>
+            <Heading style={sectionHeading}>Booking Policies</Heading>
+            <Text style={policyText}>
+              <strong>Non-refundable deposit —</strong> Your deposit is non-refundable under any circumstances.
+            </Text>
+            <Text style={policyText}>
+              <strong>Late arrival —</strong> A 1-hour buffer is built into each appointment. Arriving
+              30 or more minutes late forfeits your deposit and the full service price becomes due.
+            </Text>
+            <Text style={policyText}>
+              <strong>Rescheduling —</strong> One reschedule is permitted if requested more than
+              48 hours before your appointment. Reply to this email or contact us on WhatsApp to arrange.
+            </Text>
+          </Section>
+
+          <Hr style={divider} />
+
           {/* Footer note */}
           <Section style={section}>
             <Text style={footerNote}>
@@ -119,7 +149,7 @@ export default function BookingConfirmedClient({ booking }: Props) {
 
           {/* Bottom bar */}
           <Section style={bottomBar}>
-            <Text style={bottomText}>HairbyBash · Calgary, AB</Text>
+            <Text style={bottomText}>HairbyBash · 55 Edith Pass NW, Calgary, AB T3R 2B5</Text>
           </Section>
 
         </Container>
@@ -247,6 +277,24 @@ const remainderText: React.CSSProperties = {
   fontSize: '13px',
   margin: 0,
   lineHeight: '1.5',
+}
+
+const blowDryNotice: React.CSSProperties = {
+  color: '#5A5A5A',
+  fontSize: '13px',
+  lineHeight: '1.6',
+  backgroundColor: '#FDF8EF',
+  border: '1px solid #E8DFC8',
+  borderRadius: '6px',
+  padding: '12px 16px',
+  margin: 0,
+}
+
+const policyText: React.CSSProperties = {
+  color: '#5A5A5A',
+  fontSize: '13px',
+  lineHeight: '1.6',
+  margin: '0 0 10px',
 }
 
 const footerNote: React.CSSProperties = {

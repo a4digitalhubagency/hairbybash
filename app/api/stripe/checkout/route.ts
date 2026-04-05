@@ -12,6 +12,7 @@ interface CheckoutBody {
   clientName: string
   clientEmail: string
   clientPhone: string
+  blowDryRequested: boolean
 }
 
 export async function POST(req: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { serviceId, date, startTime, endTime, clientName, clientEmail, clientPhone } = body
+  const { serviceId, date, startTime, endTime, clientName, clientEmail, clientPhone, blowDryRequested } = body
 
   // ── 2. Input validation ────────────────────────────────────────────────────
   const errors: string[] = []
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       payment_status: 'unpaid',
       stripe_session_id: null,
+      blow_dry_requested: blowDryRequested === true,
     })
     .select('id')
     .single()
@@ -111,6 +113,16 @@ export async function POST(req: NextRequest) {
   // Add GST (5% Canadian) on top of the deposit
   const depositBase = Math.round(service.price * service.deposit_percentage / 100)
   const depositWithGST = Math.round(depositBase * 1.05)
+
+  // Stripe requires unit_amount >= 50 cents (CAD). Guard against misconfigured
+  // services with $0 price or 0% deposit to prevent a hard 500 at checkout.
+  if (depositWithGST < 50) {
+    console.error('[checkout] Deposit amount too low for Stripe:', { depositWithGST, serviceId })
+    return NextResponse.json(
+      { error: 'This service is not currently available for online booking. Please contact us directly.' },
+      { status: 400 },
+    )
+  }
 
   // ── 7. Create Stripe Checkout session ─────────────────────────────────────
   const appUrl = getAppUrl()
@@ -139,6 +151,7 @@ export async function POST(req: NextRequest) {
         date: date,
         startTime: startTime,
         clientEmail: clientEmail.trim().toLowerCase(),
+        blowDryRequested: blowDryRequested === true ? 'true' : 'false',
       },
       customer_email: clientEmail.trim().toLowerCase(),
       success_url: `${appUrl}/book/confirmation?session_id={CHECKOUT_SESSION_ID}`,

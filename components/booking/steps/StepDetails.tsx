@@ -4,9 +4,11 @@ interface StepDetailsProps {
   clientName: string
   clientEmail: string
   clientPhone: string
+  blowDryRequested: boolean | null
   formErrors: Partial<Record<'clientName' | 'clientEmail' | 'clientPhone', string>>
   onChange: (field: 'clientName' | 'clientEmail' | 'clientPhone', value: string) => void
   onBlur: (field: 'clientName' | 'clientEmail' | 'clientPhone') => void
+  onBlowDryChange: (value: boolean) => void
   onBack: () => void
 }
 
@@ -17,9 +19,11 @@ export default function StepDetails({
   clientName,
   clientEmail,
   clientPhone,
+  blowDryRequested,
   formErrors,
   onChange,
   onBlur,
+  onBlowDryChange,
   onBack,
 }: StepDetailsProps) {
   return (
@@ -103,6 +107,50 @@ export default function StepDetails({
           />
           {formErrors.clientPhone && (
             <p className="text-red-400 text-xs mt-1.5">{formErrors.clientPhone}</p>
+          )}
+        </div>
+
+        {/* Blow dry question */}
+        <div className="border border-white/10 rounded-2xl p-5 space-y-3">
+          <div>
+            <p className="text-white text-sm font-medium leading-snug">
+              Will your hair be detangled &amp; blow dried before your appointment?
+            </p>
+            <p className="text-white/40 text-xs mt-1 leading-relaxed">
+              All clients must arrive with hair fully detangled and blow dried, or a blow dry add-on fee applies.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => onBlowDryChange(true)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200 ${
+                blowDryRequested === true
+                  ? 'bg-gold border-gold text-black'
+                  : 'bg-transparent border-white/15 text-white/60 hover:border-white/30 hover:text-white/80'
+              }`}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => onBlowDryChange(false)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-200 ${
+                blowDryRequested === false
+                  ? 'bg-gold border-gold text-black'
+                  : 'bg-transparent border-white/15 text-white/60 hover:border-white/30 hover:text-white/80'
+              }`}
+            >
+              No
+            </button>
+          </div>
+
+          {/* Conditional notice — only shown when client picks Yes */}
+          {blowDryRequested === true && (
+            <p className="text-gold/80 text-xs leading-relaxed bg-gold/8 border border-gold/20 rounded-xl px-4 py-3">
+              A blow dry add-on fee will be charged <span className="font-semibold">in person</span> on the day of your appointment.
+            </p>
           )}
         </div>
 

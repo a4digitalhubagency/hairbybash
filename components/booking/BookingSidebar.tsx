@@ -164,12 +164,20 @@ export default function BookingSidebar({
           )}
         </button>
 
-        {/* Cancellation policy */}
-        <div className="border-t border-white/8 pt-4">
+        {/* Policies */}
+        <div className="border-t border-white/8 pt-4 space-y-2">
+          <p className="text-white/50 text-[10px] uppercase tracking-widest font-medium mb-2">Policies</p>
           <p className="text-white/30 text-[10px] leading-relaxed">
-            <span className="text-white/50 font-medium">Cancellation Policy:</span>{' '}
-            Deposit is non-refundable within 48 hours of your appointment.
-            Please contact us as soon as possible to reschedule.
+            <span className="text-white/45 font-medium">Deposit —</span>{' '}
+            Non-refundable under any circumstances.
+          </p>
+          <p className="text-white/30 text-[10px] leading-relaxed">
+            <span className="text-white/45 font-medium">Late arrival —</span>{' '}
+            30+ minutes late forfeits your deposit; full price becomes due.
+          </p>
+          <p className="text-white/30 text-[10px] leading-relaxed">
+            <span className="text-white/45 font-medium">Rescheduling —</span>{' '}
+            One reschedule allowed if requested more than 48 hours in advance.
           </p>
         </div>
       </div>

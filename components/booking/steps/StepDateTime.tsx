@@ -59,7 +59,10 @@ export default function StepDateTime({
   const [calYear, setCalYear] = useState(today.getFullYear())
   const [calMonth, setCalMonth] = useState(today.getMonth())
 
+  const isCurrentMonth = calYear === today.getFullYear() && calMonth === today.getMonth()
+
   function prevMonth() {
+    if (isCurrentMonth) return  // can't go before current month
     if (calMonth === 0) {
       setCalYear((y) => y - 1)
       setCalMonth(11)
@@ -127,7 +130,8 @@ export default function StepDateTime({
             <div className="flex items-center justify-between mb-5">
               <button
                 onClick={prevMonth}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/8 transition-all"
+                disabled={isCurrentMonth}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/8 transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-white/50"
                 aria-label="Previous month"
               >
                 ‹

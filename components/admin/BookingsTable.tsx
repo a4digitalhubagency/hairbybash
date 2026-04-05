@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Booking, BookingStatus } from '@/types'
-import { formatPrice, formatDateShort, formatTime, formatDuration } from '@/lib/format'
+import { formatPrice, formatDateShort, formatTime, formatDuration, formatDate, calculateDeposit } from '@/lib/format'
 import Toast from '@/components/ui/Toast'
 import type { ToastMessage } from '@/components/ui/Toast'
 
@@ -29,6 +29,170 @@ function getInitials(name: string): string {
     .join('')
 }
 
+// ── Booking Detail Modal ───────────────────────────────────────────────────────
+interface ModalProps {
+  booking: Booking
+  action: 'confirmed' | 'cancelled'
+  loading: boolean
+  onConfirm: () => void
+  onClose: () => void
+}
+
+function BookingActionModal({ booking, action, loading, onConfirm, onClose }: ModalProps) {
+  const deposit = booking.service
+    ? calculateDeposit(booking.service.price, booking.service.deposit_percentage)
+    : null
+
+  const isConfirm = action === 'confirmed'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-dark-card border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+          <h3 className="text-white font-semibold text-base">
+            {isConfirm ? 'Confirm Booking' : 'Cancel Booking'}
+          </h3>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-white/40 hover:text-white/80 hover:bg-white/8 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Client */}
+          <div>
+            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Client</p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gold/20 text-gold flex items-center justify-center text-xs font-semibold shrink-0">
+                {getInitials(booking.client_name)}
+              </div>
+              <div>
+                <p className="text-white font-medium text-sm">{booking.client_name}</p>
+                <p className="text-white/50 text-xs">{booking.client_email}</p>
+                <p className="text-white/50 text-xs">{booking.client_phone}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Appointment */}
+          <div>
+            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Appointment</p>
+            <div className="bg-dark-surface rounded-xl px-4 py-3 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-xs">Service</span>
+                <span className="text-white text-xs font-medium">{booking.service?.name ?? '—'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-xs">Category</span>
+                <span className="text-white text-xs">{booking.service?.category ?? '—'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-xs">Duration</span>
+                <span className="text-white text-xs">
+                  {booking.service ? formatDuration(booking.service.duration_minutes) : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-xs">Date</span>
+                <span className="text-white text-xs">{formatDate(booking.booking_date)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/50 text-xs">Time</span>
+                <span className="text-white text-xs">
+                  {formatTime(booking.start_time)} – {formatTime(booking.end_time)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-t border-white/5 pt-2">
+                <span className="text-white/50 text-xs">Blow Dry</span>
+                <span className={`text-xs font-medium ${booking.blow_dry_requested ? 'text-gold' : 'text-white/60'}`}>
+                  {booking.blow_dry_requested ? 'Yes — charge in person' : 'No'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          {deposit && (
+            <div>
+              <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Payment</p>
+              <div className="bg-dark-surface rounded-xl px-4 py-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs">Service price</span>
+                  <span className="text-white text-xs">{formatPrice(deposit.servicePrice)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs">
+                    Deposit ({booking.service!.deposit_percentage}%)
+                  </span>
+                  <span className="text-white text-xs">{formatPrice(deposit.depositBase)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs">GST (5%)</span>
+                  <span className="text-white text-xs">{formatPrice(deposit.depositGST)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-white/5 pt-2">
+                  <span className="text-gold text-xs font-semibold">Deposit paid</span>
+                  <span className="text-gold text-sm font-bold">{formatPrice(deposit.depositTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/40 text-xs">Remainder due on day</span>
+                  <span className="text-white/60 text-xs">{formatPrice(deposit.remainder)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Current status */}
+          <div className="flex items-center justify-between">
+            <span className="text-white/40 text-xs">Current status</span>
+            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[booking.status]}`}>
+              {booking.status}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-white/8 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:border-white/20 text-sm font-medium transition-colors disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+              isConfirm
+                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30'
+                : 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/25'
+            }`}
+          >
+            {loading ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                Processing…
+              </>
+            ) : (
+              isConfirm ? 'Yes, Confirm' : 'Yes, Cancel'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Table ─────────────────────────────────────────────────────────────────
 export default function BookingsTable({
   bookings: initialBookings,
   page,
@@ -40,6 +204,10 @@ export default function BookingsTable({
   const [bookings, setBookings] = useState<Booking[]>(initialBookings)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [pendingAction, setPendingAction] = useState<{
+    booking: Booking
+    status: 'confirmed' | 'cancelled'
+  } | null>(null)
 
   // Sync local state when the server re-fetches after router.refresh()
   useEffect(() => {
@@ -61,17 +229,20 @@ export default function BookingsTable({
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  async function updateStatus(id: string, status: 'confirmed' | 'cancelled') {
-    if (loadingId) return  // prevent concurrent updates
-    const prev = bookings.find((b) => b.id === id)
-    if (!prev) return
+  // Opens the modal instead of acting immediately
+  function requestAction(booking: Booking, status: 'confirmed' | 'cancelled') {
+    setPendingAction({ booking, status })
+  }
 
-    // Optimistic update
-    setLoadingId(id)
-    setBookings((bs) => bs.map((b) => b.id === id ? { ...b, status } : b))
+  async function confirmAction() {
+    if (!pendingAction || loadingId) return
+    const { booking, status } = pendingAction
+
+    setLoadingId(booking.id)
+    setBookings((bs) => bs.map((b) => b.id === booking.id ? { ...b, status } : b))
 
     try {
-      const res = await fetch(`/api/admin/bookings/${id}`, {
+      const res = await fetch(`/api/admin/bookings/${booking.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -83,11 +254,12 @@ export default function BookingsTable({
       }
 
       const verb = status === 'confirmed' ? 'Confirmed' : 'Cancelled'
-      addToast(`${verb} ${prev.client_name}'s booking.`, 'success')
+      addToast(`${verb} ${booking.client_name}'s booking.`, 'success')
+      setPendingAction(null)
       router.refresh()
     } catch (err) {
-      // Revert on any failure (network error, server error, etc.)
-      setBookings((bs) => bs.map((b) => b.id === id ? { ...b, status: prev.status } : b))
+      // Revert on failure
+      setBookings((bs) => bs.map((b) => b.id === booking.id ? { ...b, status: booking.status } : b))
       addToast(err instanceof Error ? err.message : 'Failed to update booking. Please try again.', 'error')
     } finally {
       setLoadingId(null)
@@ -106,6 +278,16 @@ export default function BookingsTable({
   return (
     <>
       <Toast toasts={toasts} onDismiss={dismissToast} />
+
+      {pendingAction && (
+        <BookingActionModal
+          booking={pendingAction.booking}
+          action={pendingAction.status}
+          loading={loadingId === pendingAction.booking.id}
+          onConfirm={confirmAction}
+          onClose={() => setPendingAction(null)}
+        />
+      )}
 
       <div className="bg-dark-card rounded-xl overflow-hidden">
         {/* Table header */}
@@ -171,7 +353,7 @@ export default function BookingsTable({
                       {booking.status === 'pending' && (
                         <>
                           <button
-                            onClick={() => updateStatus(booking.id, 'confirmed')}
+                            onClick={() => requestAction(booking, 'confirmed')}
                             disabled={loadingId === booking.id}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 text-xs font-medium transition-colors disabled:opacity-50"
                           >
@@ -181,7 +363,7 @@ export default function BookingsTable({
                             Confirm
                           </button>
                           <button
-                            onClick={() => updateStatus(booking.id, 'cancelled')}
+                            onClick={() => requestAction(booking, 'cancelled')}
                             disabled={loadingId === booking.id}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-colors disabled:opacity-50"
                           >
@@ -194,7 +376,7 @@ export default function BookingsTable({
                       )}
                       {booking.status === 'confirmed' && (
                         <button
-                          onClick={() => updateStatus(booking.id, 'cancelled')}
+                          onClick={() => requestAction(booking, 'cancelled')}
                           disabled={loadingId === booking.id}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-colors disabled:opacity-50"
                         >
@@ -276,7 +458,7 @@ export default function BookingsTable({
                         {booking.status === 'pending' && (
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => updateStatus(booking.id, 'confirmed')}
+                              onClick={() => requestAction(booking, 'confirmed')}
                               disabled={loadingId === booking.id}
                               title="Confirm"
                               className="w-7 h-7 rounded-full bg-green-500/15 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors disabled:opacity-50"
@@ -286,7 +468,7 @@ export default function BookingsTable({
                               </svg>
                             </button>
                             <button
-                              onClick={() => updateStatus(booking.id, 'cancelled')}
+                              onClick={() => requestAction(booking, 'cancelled')}
                               disabled={loadingId === booking.id}
                               title="Cancel"
                               className="w-7 h-7 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors disabled:opacity-50"
@@ -299,7 +481,7 @@ export default function BookingsTable({
                         )}
                         {booking.status === 'confirmed' && (
                           <button
-                            onClick={() => updateStatus(booking.id, 'cancelled')}
+                            onClick={() => requestAction(booking, 'cancelled')}
                             disabled={loadingId === booking.id}
                             title="Cancel booking"
                             className="w-7 h-7 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/25 flex items-center justify-center transition-colors disabled:opacity-50"
