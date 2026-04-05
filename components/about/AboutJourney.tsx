@@ -22,7 +22,7 @@ const milestones = [
   {
     icon: '✦',
     year: 'Calgary, AB · 2023',
-    title: 'Expanding the Crown',
+    title: 'Expanding the Craft',
     description: 'Bringing the HairbyBash experience to Calgary — a private, premium studio offering world-class braiding and loc services to a new community of clients.',
   },
 ]
