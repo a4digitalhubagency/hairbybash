@@ -89,8 +89,7 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4, ease }}
         >
-          Elevating your Alluree with precision braids and locs.
-          Every appointment is a luxury experience crafted just for you.
+          Elevating your Allure with precision braids and locs.
         </motion.p>
 
         {/* CTAs */}
