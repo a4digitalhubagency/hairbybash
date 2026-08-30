@@ -1,152 +1,167 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import type { Service } from '@/types'
+import { motion } from 'framer-motion'
+import { formatPrice, formatDuration, isBookableOnline } from '@/lib/format'
+import { groupByCategory } from '@/lib/services'
+import type { Category, Service } from '@/types'
 
-const CATEGORIES = ['All Services', 'Braids', 'Locs', 'Twists', 'Cornrows', 'Kids']
-
-function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(0)}`
+interface ServicesGridProps {
+  categories: Category[]
+  services: Service[]
+  /** Category slug from ?category= — null shows the category grid. */
+  activeSlug: string | null
 }
 
-function formatDuration(mins: number): string {
-  if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
-}
+export default function ServicesGrid({ categories, services, activeSlug }: ServicesGridProps) {
+  const byCategory = groupByCategory(services)
+  const active = activeSlug ? (categories.find((c) => c.slug === activeSlug) ?? null) : null
 
-function ServiceCard({ service, i }: { service: Service; i: number }) {
-  const [loaded, setLoaded] = useState(false)
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 22 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.05, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="bg-dark-card rounded-2xl overflow-hidden border border-white/5 flex flex-col"
-    >
-      <div className="relative aspect-square bg-dark-card">
-        {!loaded && <div className="absolute inset-0 bg-white/8 animate-pulse" />}
-        <Image
-          src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
-          alt={service.name}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-          unoptimized={!!service.image_url}
-          onLoad={() => setLoaded(true)}
-        />
-        <div className="absolute top-3 right-3">
-          <span className="bg-black/65 backdrop-blur-sm text-white/90 text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-wide">
-            {formatDuration(service.duration_minutes)}
-          </span>
+  // ── Category grid ──────────────────────────────────────────────────────────
+  if (!active) {
+    return (
+      <section className="bg-dark pb-24 px-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {categories.map((category, i) => {
+            const items = byCategory.get(category.id) ?? []
+            const bookable = items.filter(isBookableOnline)
+            const from = bookable.length ? Math.min(...bookable.map((s) => s.price)) : null
+
+            return (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.45, delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <Link
+                  href={`/services?category=${category.slug}`}
+                  className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-white/8 bg-dark-card p-7 transition-all duration-300 hover:border-gold/50 hover:bg-gold/5"
+                >
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-gold/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="relative">
+                    <h2 className="font-(family-name:--font-playfair) text-2xl font-bold text-white transition-colors duration-300 group-hover:text-gold">
+                      {category.name}
+                    </h2>
+                    {category.description && (
+                      <p className="mt-2.5 text-sm leading-relaxed text-white/40">
+                        {category.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="relative mt-8 flex items-end justify-between">
+                    <div>
+                      <p className="text-xs text-white/45">
+                        {items.length} {items.length === 1 ? 'style' : 'styles'}
+                      </p>
+                      {from !== null && (
+                        <p className="mt-0.5 text-sm font-semibold text-gold">
+                          from {formatPrice(from)}
+                        </p>
+                      )}
+                    </div>
+                    <svg className="h-4 w-4 text-white/25 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+              </motion.div>
+            )
+          })}
         </div>
-      </div>
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-(family-name:--font-playfair) text-white font-semibold text-base leading-snug">
-            {service.name}
-          </h3>
-          <span className="text-gold text-sm font-semibold shrink-0 mt-0.5">
-            {formatPrice(service.price)}+
-          </span>
-        </div>
-        <p className="text-white/45 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">
-          {service.description}
-        </p>
-        <Link
-          href={`/book?service=${service.id}`}
-          className="block text-center py-2.5 border border-gold/70 text-gold text-[11px] font-bold uppercase tracking-widest rounded-lg hover:bg-gold hover:text-black hover:border-gold transition-all duration-300"
-        >
-          Book Now
-        </Link>
-      </div>
-    </motion.div>
-  )
-}
+      </section>
+    )
+  }
 
-export default function ServicesGrid({ services }: { services: Service[] }) {
-  const [activeCategory, setActiveCategory] = useState('All Services')
-
-  // Always show all categories — Kids shows a coming-soon state when empty
-  const availableCategories = CATEGORIES
-
-  const filtered =
-    activeCategory === 'All Services'
-      ? services
-      : services.filter((s) => s.category === activeCategory)
+  // ── Styles within the open category ────────────────────────────────────────
+  const items = byCategory.get(active.id) ?? []
 
   return (
     <section className="bg-dark pb-24 px-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
-        {/* ── Category filter ── */}
-        <div className="flex items-center gap-2 mb-12 overflow-x-auto scrollbar-hide py-1 md:justify-center">
-          {availableCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className="relative shrink-0 px-5 py-2 rounded-full text-sm font-medium outline-none"
-            >
-              {activeCategory === cat && (
-                <motion.span
-                  layoutId="services-pill"
-                  className="absolute inset-0 bg-gold rounded-full"
-                  transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                />
-              )}
-              <span
-                className={`relative z-10 transition-colors duration-200 ${
-                  activeCategory === cat
-                    ? 'text-black'
-                    : 'text-white/50 hover:text-white/80'
-                }`}
-              >
-                {cat}
-              </span>
-            </button>
-          ))}
+        <div className="mb-10">
+          <Link
+            href="/services"
+            className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/80 text-sm transition-colors mb-5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            All categories
+          </Link>
+          <h2 className="font-(family-name:--font-playfair) font-bold text-3xl md:text-4xl text-white">
+            {active.name}
+          </h2>
+          {active.description && (
+            <p className="mt-2 text-white/45 text-sm max-w-xl">{active.description}</p>
+          )}
         </div>
 
-        {/* ── Service card grid ── */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeCategory}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
-          >
-            {filtered.map((service, i) => (
-              <ServiceCard key={service.id} service={service} i={i} />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Coming soon state */}
-        {filtered.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="py-24 text-center"
-          >
-            <p className="text-gold text-2xl mb-4">✦</p>
-            <h3 className="font-(family-name:--font-playfair) text-white text-2xl font-semibold mb-3">
-              {activeCategory} Services Coming Soon
-            </h3>
-            <p className="text-white/40 text-sm max-w-sm mx-auto leading-relaxed">
-              We&apos;re expanding our menu. Check back shortly or{' '}
-              <a href="/contact" className="text-gold hover:underline">contact us</a>{' '}
+        {items.length === 0 ? (
+          <div className="py-16 text-center rounded-2xl border border-white/5">
+            <p className="text-gold text-xl mb-3">✦</p>
+            <p className="font-(family-name:--font-playfair) text-white text-lg font-semibold mb-2">
+              More {active.name} styles coming soon
+            </p>
+            <p className="text-white/35 text-sm max-w-xs mx-auto leading-relaxed">
+              We&apos;re expanding this part of the menu —{' '}
+              <Link href="/contact" className="text-gold hover:underline">get in touch</Link>{' '}
               for availability.
             </p>
-          </motion.div>
-        )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {items.map((service, i) => (
+              <motion.div
+                key={service.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.45, delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <Link
+                  href={`/book?service=${service.id}`}
+                  className="group block h-full overflow-hidden rounded-2xl border border-white/8 bg-dark-card transition-all duration-300 hover:border-gold/50"
+                >
+                  <div className="relative aspect-4/3 overflow-hidden bg-dark">
+                    <Image
+                      src={service.image_url ?? '/images/services/MediumKnotlessBraids.webp'}
+                      alt={service.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      unoptimized={!!service.image_url}
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
+                    <span className="absolute top-4 left-4 inline-flex items-center rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-white/75 backdrop-blur-sm">
+                      {formatDuration(service.duration_minutes)}
+                    </span>
+                  </div>
 
+                  <div className="p-5">
+                    <h3 className="font-(family-name:--font-playfair) text-lg font-semibold text-white leading-snug transition-colors group-hover:text-gold">
+                      {service.name}
+                    </h3>
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-white/40">
+                      {service.description}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white">
+                        {formatPrice(service.price)}
+                      </span>
+                      <span className="text-xs font-medium text-gold opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        Book →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )

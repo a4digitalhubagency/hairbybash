@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatPrice, formatDuration } from '@/lib/format'
-import type { Service } from '@/types'
-
-const CATEGORIES = ['All', 'Braids', 'Locs', 'Twists', 'Cornrows', 'Kids']
+import { formatPrice, formatDuration, isBookableOnline } from '@/lib/format'
+import { groupByCategory } from '@/lib/services'
+import type { Category, Service } from '@/types'
 
 interface StepServiceProps {
+  categories: Category[]
   services: Service[]
   selectedService: Service | null
+  /** null = showing the category grid; otherwise the open category's services. */
+  openCategoryId: string | null
+  onOpenCategory: (categoryId: string | null) => void
   onSelect: (service: Service) => void
 }
 
@@ -43,134 +46,161 @@ function ServiceThumbnail({ service, isSelected }: { service: Service; isSelecte
   )
 }
 
-export default function StepService({ services, selectedService, onSelect }: StepServiceProps) {
-  const [activeCategory, setActiveCategory] = useState('All')
+export default function StepService({
+  categories,
+  services,
+  selectedService,
+  openCategoryId,
+  onOpenCategory,
+  onSelect,
+}: StepServiceProps) {
+  const byCategory = useMemo(() => groupByCategory(services), [services])
 
-  const filtered =
-    activeCategory === 'All'
-      ? services
-      : services.filter((s) => s.category === activeCategory)
+  const openCategory = openCategoryId
+    ? (categories.find((c) => c.id === openCategoryId) ?? null)
+    : null
+  const categoryServices = openCategoryId ? (byCategory.get(openCategoryId) ?? []) : []
 
+  // ── Category grid ──────────────────────────────────────────────────────────
+  if (!openCategory) {
+    return (
+      <div>
+        <h2 className="font-(family-name:--font-playfair) font-bold text-2xl md:text-3xl text-white mb-1">
+          What are we creating?
+        </h2>
+        <p className="text-white/40 text-sm mb-8">
+          Pick a category to see the styles available.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {categories.map((category, i) => {
+            const items = byCategory.get(category.id) ?? []
+            // Price the category from what a client can actually pay for — a
+            // $0 service is rejected at checkout and must not headline here.
+            const bookable = items.filter(isBookableOnline)
+            const from = bookable.length ? Math.min(...bookable.map((s) => s.price)) : null
+
+            return (
+              <motion.button
+                key={category.id}
+                onClick={() => onOpenCategory(category.id)}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="group w-full text-left rounded-2xl border border-white/8 bg-dark-card p-5 hover:border-gold/50 hover:bg-gold/5 transition-all duration-200"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <p className="font-(family-name:--font-playfair) font-bold text-lg text-white group-hover:text-gold transition-colors">
+                    {category.name}
+                  </p>
+                  <svg className="w-4 h-4 text-white/25 group-hover:text-gold shrink-0 mt-1.5 transition-all duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                {category.description && (
+                  <p className="text-white/40 text-xs leading-relaxed line-clamp-2 mb-3">
+                    {category.description}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-white/50">
+                    {items.length} {items.length === 1 ? 'style' : 'styles'}
+                  </span>
+                  {from !== null && (
+                    <>
+                      <span className="text-white/20">·</span>
+                      <span className="text-gold font-medium">from {formatPrice(from)}</span>
+                    </>
+                  )}
+                </div>
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Services within the open category ──────────────────────────────────────
   return (
     <div>
+      <button
+        onClick={() => onOpenCategory(null)}
+        className="flex items-center gap-1.5 text-white/40 hover:text-white/80 text-sm mb-6 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        All categories
+      </button>
+
       <h2 className="font-(family-name:--font-playfair) font-bold text-2xl md:text-3xl text-white mb-1">
-        Select Your Service
+        {openCategory.name}
       </h2>
       <p className="text-white/40 text-sm mb-8">
-        Choose the treatment for your next appointment.
+        {categoryServices.length} {categoryServices.length === 1 ? 'style' : 'styles'} available — choose one to continue.
       </p>
 
-      {/* Category filter tabs */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-hide py-1 md:justify-start">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className="relative shrink-0 px-4 py-1.5 rounded-full text-xs font-medium outline-none"
-          >
-            {activeCategory === cat && (
-              <motion.span
-                layoutId="booking-category-pill"
-                className="absolute inset-0 bg-gold rounded-full"
-                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              />
-            )}
-            <span
-              className={`relative z-10 transition-colors duration-200 ${
-                activeCategory === cat
-                  ? 'text-black'
-                  : 'text-white/40 hover:text-white/80'
-              }`}
-            >
-              {cat}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Service grid */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeCategory}
+          key={openCategory.id}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.18 }}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         >
-          {filtered.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-16 text-center rounded-2xl border border-white/5"
-            >
-              <p className="text-gold text-xl mb-3">✦</p>
-              <p className="font-(family-name:--font-playfair) text-white text-lg font-semibold mb-2">
-                {activeCategory} Services Coming Soon
-              </p>
-              <p className="text-white/35 text-sm max-w-xs mx-auto leading-relaxed">
-                We&apos;re expanding our menu — check back soon or{' '}
-                <a href="/contact" className="text-gold hover:underline">contact us</a>{' '}
-                for availability.
-              </p>
-            </motion.div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filtered.map((service, i) => {
-                const isSelected = selectedService?.id === service.id
-                return (
-                  <motion.button
-                    key={service.id}
-                    onClick={() => onSelect(service)}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className={`group w-full text-left rounded-2xl border p-4 flex gap-4 transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-gold/8 border-gold/60'
-                        : 'bg-dark-card border-white/8 hover:border-white/20'
+          {categoryServices.map((service, i) => {
+            const isSelected = selectedService?.id === service.id
+            return (
+              <motion.button
+                key={service.id}
+                onClick={() => onSelect(service)}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className={`group w-full text-left rounded-2xl border p-4 flex gap-4 transition-all duration-200 ${
+                  isSelected
+                    ? 'bg-gold/8 border-gold/60'
+                    : 'bg-dark-card border-white/8 hover:border-white/20'
+                }`}
+              >
+                <ServiceThumbnail service={service} isSelected={isSelected} />
+
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`font-semibold text-sm leading-tight mb-1 transition-colors ${
+                      isSelected ? 'text-gold' : 'text-white group-hover:text-white'
                     }`}
                   >
-                    {/* Thumbnail */}
-                    <ServiceThumbnail service={service} isSelected={isSelected} />
+                    {service.name}
+                  </p>
+                  <p className="text-white/40 text-xs leading-relaxed line-clamp-2 mb-2">
+                    {service.description}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white font-semibold text-sm">
+                      {formatPrice(service.price)}
+                    </span>
+                    <span className="text-white/30 text-xs">·</span>
+                    <span className="text-white/40 text-xs">
+                      {formatDuration(service.duration_minutes)}
+                    </span>
+                  </div>
+                </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-semibold text-sm leading-tight mb-1 transition-colors ${
-                          isSelected ? 'text-gold' : 'text-white group-hover:text-white'
-                        }`}
-                      >
-                        {service.name}
-                      </p>
-                      <p className="text-white/40 text-xs leading-relaxed line-clamp-2 mb-2">
-                        {service.description}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-semibold text-sm">
-                          {formatPrice(service.price)}
-                        </span>
-                        <span className="text-white/30 text-xs">·</span>
-                        <span className="text-white/40 text-xs">
-                          {formatDuration(service.duration_minutes)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Radio indicator */}
-                    <div
-                      className={`mt-1 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-200 ${
-                        isSelected ? 'border-gold bg-gold' : 'border-white/20'
-                      }`}
-                    >
-                      {isSelected && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                      )}
-                    </div>
-                  </motion.button>
-                )
-              })}
-            </div>
-          )}
+                <div
+                  className={`mt-1 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-200 ${
+                    isSelected ? 'border-gold bg-gold' : 'border-white/20'
+                  }`}
+                >
+                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                </div>
+              </motion.button>
+            )
+          })}
         </motion.div>
       </AnimatePresence>
     </div>

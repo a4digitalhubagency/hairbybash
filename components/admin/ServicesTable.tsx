@@ -3,32 +3,29 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { formatPrice, formatDuration } from '@/lib/format'
+import { formatPrice, formatDuration, calculateDeposit, STRIPE_MIN_CHARGE_CENTS } from '@/lib/format'
 import Toast from '@/components/ui/Toast'
 import type { ToastMessage } from '@/components/ui/Toast'
-import type { Service } from '@/types'
+import type { Category, Service } from '@/types'
 
 const PAGE_SIZE = 5
-const CATEGORIES = ['Braids', 'Locs', 'Twists', 'Cornrows', 'Kids', 'Other']
 const DESC_MAX = 300
 
-const DURATION_OPTIONS = [
-  { label: '30 min',      value: 30  },
-  { label: '45 min',      value: 45  },
-  { label: '1 hr',        value: 60  },
-  { label: '1 hr 15 min', value: 75  },
-  { label: '1 hr 30 min', value: 90  },
-  { label: '1 hr 45 min', value: 105 },
-  { label: '2 hr',        value: 120 },
-  { label: '2 hr 30 min', value: 150 },
-  { label: '3 hr',        value: 180 },
-  { label: '3 hr 30 min', value: 210 },
-  { label: '4 hr',        value: 240 },
-  { label: '4 hr 30 min', value: 270 },
-  { label: '5 hr',        value: 300 },
-  { label: '5 hr 30 min', value: 330 },
-  { label: '6 hr',        value: 360 },
-]
+/**
+ * LOE v1.2 raises the ceiling from 6 hours to 14. Note that 14 hours is a data
+ * entry limit, not a promise: whether a given duration is actually bookable
+ * depends on the open hours, which is what the form warns about.
+ *
+ * Generated rather than listed so the ceiling is one number to change — the
+ * hand-written list is what left four seeded services above it and uneditable.
+ */
+const MAX_DURATION_MINUTES = 840
+
+const DURATION_OPTIONS = (() => {
+  const values = [30, 45, 60, 75, 90, 105]
+  for (let m = 120; m <= MAX_DURATION_MINUTES; m += 30) values.push(m)
+  return values.map((value) => ({ value, label: formatDuration(value) }))
+})()
 
 // ── Form types ───────────────────────────────────────────────────────────────
 
@@ -38,7 +35,7 @@ interface ServiceForm {
   price: string
   deposit_percentage: string
   duration_minutes: string
-  category: string
+  category_id: string
   image_url: string
   active: boolean
 }
@@ -49,7 +46,7 @@ const EMPTY_FORM: ServiceForm = {
   price: '',
   deposit_percentage: '50',
   duration_minutes: '60',
-  category: 'Braids',
+  category_id: '',
   image_url: '',
   active: true,
 }
@@ -61,7 +58,7 @@ function serviceToForm(s: Service): ServiceForm {
     price: (s.price / 100).toFixed(2),
     deposit_percentage: String(s.deposit_percentage),
     duration_minutes: String(s.duration_minutes),
-    category: s.category,
+    category_id: s.category_id ?? '',
     image_url: s.image_url ?? '',
     active: s.active,
   }
@@ -262,6 +259,9 @@ interface ModalProps {
   editing: Service | null
   form: ServiceForm
   saving: boolean
+  /** Longest open day in minutes, from weekly_availability. 0 = unknown. */
+  longestWindowMinutes: number
+  categories: Category[]
   onChange: (f: ServiceForm) => void
   onSave: () => void
   onRequestDelete: () => void
@@ -269,7 +269,43 @@ interface ModalProps {
   addToast: (message: string, type: ToastMessage['type']) => void
 }
 
-function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete, onClose, addToast }: ModalProps) {
+/**
+ * Configurations the admin form accepts but the booking flow cannot honour.
+ * Both are allowed — Bash may have a reason — but neither may happen silently,
+ * which is how a 14-hour service or a $0 deposit becomes invisible to clients
+ * with nothing to explain why.
+ */
+function bookabilityWarnings(form: ServiceForm, longestWindowMinutes: number): string[] {
+  const warnings: string[] = []
+
+  const duration = parseInt(form.duration_minutes, 10)
+  if (longestWindowMinutes > 0 && duration > longestWindowMinutes) {
+    warnings.push(
+      `No open day is long enough for ${formatDuration(duration)} — the longest is ` +
+      `${formatDuration(longestWindowMinutes)}. Clients won't see any times for this service.`,
+    )
+  }
+
+  const price = Math.round((parseFloat(form.price) || 0) * 100)
+  const depositPct = Number(form.deposit_percentage) || 0
+  const { depositTotal } = calculateDeposit(price, depositPct)
+  if (depositTotal < STRIPE_MIN_CHARGE_CENTS) {
+    warnings.push(
+      depositPct === 0
+        ? 'A 0% deposit means there is nothing to charge, so checkout will refuse this service.'
+        : `A ${depositPct}% deposit on ${formatPrice(price)} comes to ${depositTotal}¢, below the ` +
+          `${STRIPE_MIN_CHARGE_CENTS}¢ minimum a card payment can take. Clients will reach the ` +
+          `payment step and be turned away.`,
+    )
+  }
+
+  return warnings
+}
+
+function ServiceModal({ editing, form, saving, longestWindowMinutes, categories, onChange, onSave, onRequestDelete, onClose, addToast }: ModalProps) {
+  const warnings = bookabilityWarnings(form, longestWindowMinutes)
+  const categoryName = categories.find((c) => c.id === form.category_id)?.name ?? ''
+
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
@@ -399,9 +435,9 @@ function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete
           </h2>
 
           {/* Category badge */}
-          {form.category && (
+          {categoryName && (
             <span className="inline-block self-start px-2.5 py-1 bg-gold/10 border border-gold/20 rounded-full text-gold text-[10px] font-medium mb-3">
-              {form.category}
+              {categoryName}
             </span>
           )}
 
@@ -484,12 +520,13 @@ function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete
                 <Field label="Category" required>
                   <div className="relative">
                     <select
-                      value={form.category}
-                      onChange={(e) => field('category', e.target.value)}
+                      value={form.category_id}
+                      onChange={(e) => field('category_id', e.target.value)}
                       className={selectCls}
                     >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c} className="bg-[#111]">{c}</option>
+                      <option value="" className="bg-[#111]">Choose a category…</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-[#111]">{c.name}</option>
                       ))}
                     </select>
                     <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -582,6 +619,25 @@ function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete
                 </Field>
 
               </div>
+
+              {/* Bookability warnings — allowed, but never silent */}
+              {warnings.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {warnings.map((w) => (
+                    <div
+                      key={w}
+                      className="flex gap-2.5 items-start bg-amber-500/8 border border-amber-500/25 rounded-xl px-4 py-3"
+                    >
+                      <svg className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      </svg>
+                      <p className="text-amber-200/85 text-xs leading-relaxed">
+                        {w} You can still save it.
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Gallery Image ──────────────────────────────────────── */}
@@ -703,9 +759,12 @@ function ServiceModal({ editing, form, saving, onChange, onSave, onRequestDelete
 
 interface Props {
   initialServices: Service[]
+  initialCategories: Category[]
+  /** Longest open day in minutes, derived from weekly_availability. */
+  longestWindowMinutes: number
 }
 
-export default function ServicesTable({ initialServices }: Props) {
+export default function ServicesTable({ initialServices, initialCategories, longestWindowMinutes }: Props) {
   const router = useRouter()
   const [services, setServices] = useState<Service[]>(initialServices)
 
@@ -817,7 +876,7 @@ export default function ServicesTable({ initialServices }: Props) {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!form.name.trim() || !form.category || !form.price || !form.duration_minutes) {
+    if (!form.name.trim() || !form.category_id || !form.price || !form.duration_minutes) {
       addToast('Please fill in all required fields', 'error')
       return
     }
@@ -839,7 +898,7 @@ export default function ServicesTable({ initialServices }: Props) {
       price: priceVal,
       deposit_percentage: depositVal,
       duration_minutes: parseInt(form.duration_minutes),
-      category: form.category,
+      category_id: form.category_id,
       image_url: form.image_url.trim() || null,
       active: form.active,
     }
@@ -923,6 +982,8 @@ export default function ServicesTable({ initialServices }: Props) {
           editing={editingService}
           form={form}
           saving={saving}
+          longestWindowMinutes={longestWindowMinutes}
+          categories={initialCategories}
           onChange={setForm}
           onSave={handleSave}
           onRequestDelete={() => { if (editingService) setDeleteTarget(editingService) }}
@@ -997,7 +1058,7 @@ export default function ServicesTable({ initialServices }: Props) {
 
               {filterOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-dark-surface border border-white/10 rounded-xl shadow-xl z-10 overflow-hidden">
-                  {['all', ...CATEGORIES].map((cat) => (
+                  {['all', ...initialCategories.map((c) => c.name)].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => handleCategoryFilter(cat)}
