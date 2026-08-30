@@ -9,10 +9,12 @@ import StepDateTime from './steps/StepDateTime'
 import StepDetails from './steps/StepDetails'
 import StepReview from './steps/StepReview'
 import Toast, { type ToastMessage } from '@/components/ui/Toast'
-import type { Service, TimeSlot } from '@/types'
+import type { Category, Service, TimeSlot } from '@/types'
 
 interface BookingState {
   currentStep: BookingStep
+  /** Which category's styles are showing. null = the category grid itself. */
+  openCategoryId: string | null
   selectedService: Service | null
   selectedDate: string | null
   selectedSlot: TimeSlot | null
@@ -39,6 +41,9 @@ function getInitialState(
 
   return {
     currentStep: preSelected ? 'datetime' : 'service',
+    // A deep link from /services lands on a style, so open its category —
+    // going back should show its siblings, not start over at the top.
+    openCategoryId: preSelected?.category_id ?? null,
     selectedService: preSelected,
     selectedDate: null,
     selectedSlot: null,
@@ -56,6 +61,7 @@ function getInitialState(
 }
 
 interface BookingFlowProps {
+  categories: Category[]
   services: Service[]
   preSelectedServiceId: string | null
 }
@@ -67,7 +73,7 @@ function newToastId() {
   return `toast-${++toastCounter}`
 }
 
-export default function BookingFlow({ services, preSelectedServiceId }: BookingFlowProps) {
+export default function BookingFlow({ categories, services, preSelectedServiceId }: BookingFlowProps) {
   const [state, setState] = useState<BookingState>(() =>
     getInitialState(services, preSelectedServiceId),
   )
@@ -135,6 +141,8 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
     const prevStep = STEP_ORDER[currentIndex - 1]
     setState((s) => {
       if (prevStep === 'service') {
+        // Keep openCategoryId — the client returns to the styles they were
+        // browsing, not to the top of the menu.
         return { ...s, currentStep: 'service', selectedDate: null, selectedSlot: null, availableSlots: [], slotsNoFit: false, slotsInsufficientTime: false }
       }
       if (prevStep === 'datetime') {
@@ -146,6 +154,10 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
+  function handleOpenCategory(categoryId: string | null) {
+    setState((s) => ({ ...s, openCategoryId: categoryId }))
+  }
+
   function handleServiceSelect(service: Service) {
     setState((s) => ({
       ...s,
@@ -257,7 +269,7 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
       setState((s) => ({ ...s, checkoutLoading: false }))
       addToast('A network error occurred. Please check your connection and try again.')
     }
-  }, [state]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state])
 
   function handleSidebarContinue() {
     if (state.currentStep === 'review') {
@@ -295,8 +307,11 @@ export default function BookingFlow({ services, preSelectedServiceId }: BookingF
               >
                 {state.currentStep === 'service' && (
                   <StepService
+                    categories={categories}
                     services={services}
                     selectedService={state.selectedService}
+                    openCategoryId={state.openCategoryId}
+                    onOpenCategory={handleOpenCategory}
                     onSelect={handleServiceSelect}
                   />
                 )}

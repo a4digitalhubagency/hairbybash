@@ -3,9 +3,13 @@ import type { Metadata } from 'next'
 import Navbar from '@/components/ui/Navbar'
 import Footer from '@/components/ui/Footer'
 import ServicesGrid from '@/components/services/ServicesGrid'
-import { getActiveServices } from '@/lib/services'
+import { getActiveServices, getActiveCategories } from '@/lib/services'
 
 export const revalidate = 3600
+
+interface Props {
+  searchParams: Promise<{ category?: string }>
+}
 
 export const metadata: Metadata = {
   title: 'Services | HairbyBash',
@@ -13,13 +17,21 @@ export const metadata: Metadata = {
     'Browse our full menu of premium braiding, loc maintenance, and protective styling services in Calgary, AB.',
 }
 
-export default async function ServicesPage() {
+export default async function ServicesPage({ searchParams }: Props) {
+  const { category } = await searchParams
+
   let services: Awaited<ReturnType<typeof getActiveServices>> = []
+  let categories: Awaited<ReturnType<typeof getActiveCategories>> = []
   try {
-    services = await getActiveServices()
+    ;[services, categories] = await Promise.all([
+      getActiveServices(),
+      getActiveCategories(),
+    ])
   } catch (err) {
     console.error('[ServicesPage] Failed to load services:', err)
   }
+
+  const active = categories.find((c) => c.slug === category) ?? null
 
   return (
     <>
@@ -36,17 +48,22 @@ export default async function ServicesPage() {
               Premium Care
             </p>
             <h1 className="font-(family-name:--font-playfair) font-bold text-5xl md:text-6xl text-white leading-tight mb-5">
-              Our Services Menu
+              {active ? active.name : 'Our Services Menu'}
             </h1>
             <p className="text-white/50 text-base md:text-lg leading-relaxed max-w-xl mx-auto">
-              Discover our range of premium braiding, styling, and treatment services
-              tailored to enhance your unique beauty in a luxurious setting.
+              {active
+                ? 'Choose a style to see availability and book your appointment.'
+                : 'Discover our range of premium braiding, styling, and treatment services tailored to enhance your unique beauty in a luxurious setting.'}
             </p>
           </div>
         </section>
 
         {/* ── Grid (client — handles filter + animations) ── */}
-        <ServicesGrid services={services} />
+        <ServicesGrid
+          categories={categories}
+          services={services}
+          activeSlug={active?.slug ?? null}
+        />
 
         {/* ── Bottom CTA ── */}
         <section className="bg-dark py-20 px-6 text-center border-t border-white/5">

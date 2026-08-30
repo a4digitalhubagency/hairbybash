@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { formatTime } from '@/lib/format'
 import type { Service, TimeSlot } from '@/types'
+import { studioNow, toDateString } from '@/lib/date'
 
 // Studio is open every day — no days are blocked client-side.
 // The weekly_availability table is the source of truth server-side.
@@ -53,8 +54,10 @@ export default function StepDateTime({
   onSlotSelect,
   onBack,
 }: StepDateTimeProps) {
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
+  // Calgary, not the visitor's browser — a client booking from Toronto at
+  // 11pm would otherwise see tomorrow as "today" and lose a bookable day.
+  const today = studioNow()
+  const todayStr = toDateString(today)
 
   const [calYear, setCalYear] = useState(today.getFullYear())
   const [calMonth, setCalMonth] = useState(today.getMonth())

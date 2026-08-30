@@ -38,6 +38,24 @@ export function formatTime(timeStr: string): string {
   return `${displayHour}:${m.toString().padStart(2, '0')} ${period}`
 }
 
+/**
+ * Stripe will not accept a CAD charge below 50 cents. A service whose deposit
+ * computes to less than this cannot be booked online at all — checkout rejects
+ * it, so the admin form warns before it can be saved.
+ */
+export const STRIPE_MIN_CHARGE_CENTS = 50
+
+/**
+ * Whether a client can actually complete checkout for this service.
+ *
+ * A service whose deposit falls below Stripe's minimum is rejected at the
+ * payment step, so it must never set a category's "from" price — advertising
+ * a price nobody can pay is worse than not advertising one.
+ */
+export function isBookableOnline(service: { price: number; deposit_percentage: number }): boolean {
+  return calculateDeposit(service.price, service.deposit_percentage).depositTotal >= STRIPE_MIN_CHARGE_CENTS
+}
+
 export function calculateDeposit(
   priceInCents: number,
   depositPercentage: number,

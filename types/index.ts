@@ -1,6 +1,22 @@
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled'
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded'
 
+/**
+ * A top-level grouping in the service menu — Braids, Twists, Locs and so on.
+ * Categories are navigation only: they are never bookable and carry no price.
+ * The client picks a category, then one of its services, then a date.
+ */
+export interface Category {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  image_url: string | null
+  display_order: number
+  active: boolean
+  created_at: string
+}
+
 export interface Service {
   id: string
   name: string
@@ -8,7 +24,9 @@ export interface Service {
   price: number // in cents
   deposit_percentage: number
   duration_minutes: number
+  /** @deprecated Legacy flat category name. Use category_id; kept only until the last reader is migrated. */
   category: string
+  category_id: string | null
   image_url: string | null
   active: boolean
   created_at: string

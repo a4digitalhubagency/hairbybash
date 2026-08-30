@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAvailableSlots } from '@/lib/availability'
+import { studioDate } from '@/lib/date'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Past dates: return empty silently (no 400 — the client calendar prevents this anyway)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = studioDate()
   if (date < today) {
     return NextResponse.json({ slots: [] })
   }

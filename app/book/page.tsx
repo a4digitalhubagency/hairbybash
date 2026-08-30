@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Navbar from '@/components/ui/Navbar'
-import { getActiveServices } from '@/lib/services'
+import { getActiveServices, getActiveCategories } from '@/lib/services'
 import BookingFlow from '@/components/booking/BookingFlow'
 
 // Booking page must always be fresh — real-time availability
@@ -18,13 +18,17 @@ interface Props {
 
 export default async function BookPage({ searchParams }: Props) {
   const params = await searchParams
-  const services = await getActiveServices()
+  const [services, categories] = await Promise.all([
+    getActiveServices(),
+    getActiveCategories(),
+  ])
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-dark pt-20 pb-24">
         <BookingFlow
+          categories={categories}
           services={services}
           preSelectedServiceId={params.service ?? null}
         />

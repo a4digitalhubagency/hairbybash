@@ -5,6 +5,7 @@ import Toast from '@/components/ui/Toast'
 import type { ToastMessage } from '@/components/ui/Toast'
 import type { Booking, BookingStatus } from '@/types'
 import { formatPrice } from '@/lib/format'
+import { studioNow } from '@/lib/date'
 
 // ── Grid constants ────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ function fmtDayHeader(d: Date): { label: string; num: number; isToday: boolean }
   return {
     label: DAY_LABELS[dow === 0 ? 6 : dow - 1],
     num: d.getDate(),
-    isToday: toDateStr(d) === toDateStr(new Date()),
+    isToday: toDateStr(d) === toDateStr(studioNow()),
   }
 }
 
@@ -334,17 +335,17 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   const [selected, setSelected] = useState<Booking | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [toasts, setToasts]     = useState<ToastMessage[]>([])
-  const [now, setNow]           = useState(new Date())
+  const [now, setNow]           = useState(studioNow())
 
   // Day-view date (defaults to today)
-  const [dayViewDate, setDayViewDate] = useState(() => toDateStr(new Date()))
+  const [dayViewDate, setDayViewDate] = useState(() => toDateStr(studioNow()))
 
   // AbortController ref — cancels in-flight fetches on rapid week navigation
   const fetchAbortRef = useRef<AbortController | null>(null)
 
   // Live clock — update every minute for "in progress" detection
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000)
+    const id = setInterval(() => setNow(studioNow()), 60_000)
     return () => clearInterval(id)
   }, [])
 
@@ -393,8 +394,8 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
   }
 
   function goToday() {
-    const monday = getMonday(new Date())
-    const todayDay = toDateStr(new Date())
+    const monday = getMonday(studioNow())
+    const todayDay = toDateStr(studioNow())
     if (toDateStr(monday) !== toDateStr(weekStart)) {
       setWeekStart(monday)
       fetchWeek(monday)
@@ -410,7 +411,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
     [weekStart],
   )
 
-  const todayStr = toDateStr(new Date())
+  const todayStr = toDateStr(studioNow())
 
   const bookingsByDate = useMemo(() => {
     const map: Record<string, Booking[]> = {}
@@ -443,7 +444,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
     ? ((nowMin - GRID_START * 60) / 60) * HOUR_HEIGHT
     : null
 
-  const isCurrentWeek = toDateStr(getMonday(new Date())) === toDateStr(weekStart)
+  const isCurrentWeek = toDateStr(getMonday(studioNow())) === toDateStr(weekStart)
 
   const todayStats = {
     confirmed: todayBookings.filter(b => b.status === 'confirmed').length,
@@ -730,7 +731,7 @@ export default function AdminCalendar({ initialBookings, initialWeekStart }: Pro
               Today&apos;s Schedule
             </p>
             <p className="text-white/45 text-xs mt-0.5">
-              {new Date().toLocaleDateString('en-CA', {
+              {studioNow().toLocaleDateString('en-CA', {
                 weekday: 'long', month: 'long', day: 'numeric',
               })}
             </p>
