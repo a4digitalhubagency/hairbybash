@@ -53,6 +53,8 @@ export interface Booking {
   blow_dry_requested: boolean
   /** Whether the client has used their one-time reschedule (must be >48h before appointment). */
   reschedule_used: boolean
+  /** When the 24-hour reminder was sent. Null means it has not gone out yet. */
+  reminder_sent_at: string | null
   created_at: string
   // joined
   service?: Service

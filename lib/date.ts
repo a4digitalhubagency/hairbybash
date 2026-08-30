@@ -86,3 +86,14 @@ export function studioNow(): Date {
   const { year, month, day, hour, minute } = partsOf(new Date())
   return new Date(year, month - 1, day, hour, minute)
 }
+
+/**
+ * Shifts a YYYY-MM-DD date string by whole days, returning YYYY-MM-DD.
+ *
+ * Calendar arithmetic only — it never converts to an instant, so a DST
+ * transition in the interval cannot move the result by a day.
+ */
+export function addDays(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return toDateString(new Date(year, month - 1, day + days))
+}

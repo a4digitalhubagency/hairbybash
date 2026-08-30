@@ -4,6 +4,7 @@ import BookingConfirmedClient from '@/emails/BookingConfirmedClient'
 import NewBookingAdmin from '@/emails/NewBookingAdmin'
 import BookingStatusUpdate from '@/emails/BookingStatusUpdate'
 import BookingExpired from '@/emails/BookingExpired'
+import BookingReminder from '@/emails/BookingReminder'
 import type { Booking, Service } from '@/types'
 
 // Lazy-initialized so missing RESEND_API_KEY doesn't throw at module load / build time.
@@ -79,6 +80,19 @@ export async function sendBookingExpiredEmail(
     from: getFrom(),
     to: clientEmail,
     subject: 'Your booking slot was released — HairbyBash',
+    html,
+  })
+}
+
+/** Sends the 24-hour reminder — time, address, late-arrival and deposit terms. */
+export async function sendBookingReminderEmail(booking: FullBooking): Promise<void> {
+  const resend = getResend()
+  const html = await render(BookingReminder({ booking }))
+
+  await resend.emails.send({
+    from: getFrom(),
+    to: booking.client_email,
+    subject: `Tomorrow at ${booking.start_time.slice(0, 5)} — your HairbyBash appointment`,
     html,
   })
 }
