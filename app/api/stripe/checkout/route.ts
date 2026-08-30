@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { getAvailableSlots } from '@/lib/availability'
 import { getAppUrl } from '@/lib/url'
+import { rateLimit, clientKey, tooManyRequests } from '@/lib/rate-limit'
 import { calculateDeposit, STRIPE_MIN_CHARGE_CENTS } from '@/lib/format'
 import { studioDate } from '@/lib/date'
 
@@ -17,7 +18,25 @@ interface CheckoutBody {
   blowDryRequested: boolean
 }
 
+/**
+ * Deliberately tight. A booking takes a person a minute or two to fill in, so
+ * six starts per ten minutes is generous for a real client and useless to a
+ * script trying to hold the calendar.
+ */
+const CHECKOUT_LIMIT = 6
+const CHECKOUT_WINDOW_SECONDS = 600
+
 export async function POST(req: NextRequest) {
+  // ── 0. Rate limit ──────────────────────────────────────────────────────────
+  // Before any work: this handler writes a row and opens a Stripe session, so
+  // the cost of an unthrottled caller is paid in held slots, not just CPU.
+  const { allowed, retryAfter } = await rateLimit(
+    `checkout:${clientKey(req)}`,
+    CHECKOUT_LIMIT,
+    CHECKOUT_WINDOW_SECONDS,
+  )
+  if (!allowed) return tooManyRequests(retryAfter)
+
   // ── 1. Parse body ──────────────────────────────────────────────────────────
   let body: CheckoutBody
   try {

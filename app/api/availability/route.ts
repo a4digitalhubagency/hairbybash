@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAvailableSlots } from '@/lib/availability'
+import { rateLimit, clientKey, tooManyRequests } from '@/lib/rate-limit'
 import { studioDate } from '@/lib/date'
 
+/**
+ * Looser than checkout: the booking calendar fires one of these per date the
+ * client clicks, so a browsing visitor legitimately makes a dozen in a minute.
+ * This is a ceiling on scraping, not a throttle on use.
+ */
+const AVAILABILITY_LIMIT = 60
+const AVAILABILITY_WINDOW_SECONDS = 60
+
 export async function GET(req: NextRequest) {
+  const { allowed, retryAfter } = await rateLimit(
+    `availability:${clientKey(req)}`,
+    AVAILABILITY_LIMIT,
+    AVAILABILITY_WINDOW_SECONDS,
+  )
+  if (!allowed) return tooManyRequests(retryAfter)
+
   const { searchParams } = req.nextUrl
   const date = searchParams.get('date')
   const serviceId = searchParams.get('serviceId')
