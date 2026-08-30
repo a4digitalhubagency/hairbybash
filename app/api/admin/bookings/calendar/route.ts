@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { searchParams } = req.nextUrl
   const start = searchParams.get('start')

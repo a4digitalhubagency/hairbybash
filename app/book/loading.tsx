@@ -1,6 +1,6 @@
 export default function BookingLoading() {
   return (
-    <div className="min-h-screen bg-dark pt-20 pb-24">
+    <div className="min-h-screen bg-dark pt-nav pb-24">
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-10">
         {/* Step indicator skeleton */}
         <div className="flex items-center justify-center gap-3 mb-10">

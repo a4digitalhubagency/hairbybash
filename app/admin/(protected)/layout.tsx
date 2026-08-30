@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/admin/login')
+  // Middleware already redirects, but this layout must never render an admin
+  // shell on the strength of a session alone.
+  if (!user || !isAdmin(user)) redirect('/admin/login')
 
   return (
     <div className="flex min-h-screen bg-dark">

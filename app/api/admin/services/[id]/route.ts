@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { studioDate } from '@/lib/date'
 
@@ -7,9 +7,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { id } = await params
   const body = await req.json()
@@ -71,15 +70,18 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { id } = await params
   const force = req.nextUrl.searchParams.get('force') === 'true'
   const admin = createAdminClient()
 
-  // Guard: check for upcoming bookings unless force=true
+  // Two separate questions, and conflating them is what made this route
+  // return an unexplained 500.
+  //
+  // First: are there upcoming bookings a client is still expecting? That is a
+  // business objection, and ?force=true overrides it.
   if (!force) {
     const today = studioDate()
     const { count } = await admin
@@ -95,6 +97,27 @@ export async function DELETE(
         { status: 409 },
       )
     }
+  }
+
+  // Second: does ANY booking reference this service? service_id is `on delete
+  // restrict`, so a service whose only bookings are past or cancelled passes
+  // the check above and then fails at the foreign key — previously surfacing as
+  // "Failed to delete service" with nothing actionable in it. force cannot
+  // override a database constraint, so it does not get to skip this.
+  const { count: totalReferences } = await admin
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .eq('service_id', id)
+
+  if ((totalReferences ?? 0) > 0) {
+    return NextResponse.json(
+      {
+        error: `This service is attached to ${totalReferences} past or cancelled ${totalReferences === 1 ? 'booking' : 'bookings'} and cannot be deleted without losing that history. Hide it instead — set it to inactive and clients will no longer see it.`,
+        bookingCount: totalReferences,
+        canHide: true,
+      },
+      { status: 409 },
+    )
   }
 
   // Fetch the service first so we can clean up its storage image if needed

@@ -34,7 +34,7 @@ export default async function ConfirmationPage({ searchParams }: Props) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-dark pt-20 pb-16 px-6">
+      <main className="min-h-screen bg-dark pt-nav pb-16 px-6">
         <ConfirmationCard booking={booking} sessionId={sessionId} />
       </main>
     </>

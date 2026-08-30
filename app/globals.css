@@ -17,6 +17,20 @@
 :root {
   --background: #0D0D0D;
   --foreground: #ffffff;
+
+  /* Height of the fixed header. The navbar sizes itself from this and pages
+     clear it with .pt-nav, so there is one number to change rather than a
+     magic value repeated across every page that renders a Navbar. */
+  --nav-h: 5rem;
+}
+
+@media (min-width: 768px) {
+  :root { --nav-h: 6rem; }
+}
+
+/* Clears the fixed header, plus a little breathing room. */
+.pt-nav {
+  padding-top: calc(var(--nav-h) + 1rem);
 }
 
 body {
@@ -32,4 +46,18 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ── Typographic hierarchy ───────────────────────────────────────────────────
+   Headings sit at large sizes across the site, where default tracking reads
+   loose and ragged line breaks read cheap. Both are corrected globally rather
+   than per-component so the whole site lifts together. */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+/* Uppercase micro-labels — nav links, eyebrows, chips — need air between the
+   letters to read as deliberate rather than shouted. */
+.tracking-label {
+  letter-spacing: 0.1em;
 }

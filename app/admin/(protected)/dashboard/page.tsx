@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { formatPrice } from '@/lib/format'
+import { formatPrice, calculateDeposit } from '@/lib/format'
 import StatCard from '@/components/admin/StatCard'
 import BookingsTable from '@/components/admin/BookingsTable'
 import BlockedDatesManager from '@/components/admin/BlockedDatesManager'
@@ -75,11 +75,12 @@ export default async function DashboardPage({
         .select('id', { count: 'exact', head: true })
         .eq('status', 'confirmed'),
 
-      // Revenue: price of all confirmed bookings (via joined service)
+      // Money: deposits actually taken, and the value those bookings represent.
+      // Both are derived from one pass so the two numbers cannot disagree.
       admin
         .from('bookings')
-        .select('service:services(price)')
-        .eq('status', 'confirmed'),
+        .select('status, payment_status, service:services(price, deposit_percentage)')
+        .neq('status', 'cancelled'),
 
       // Paginated bookings list
       (() => {
@@ -108,10 +109,24 @@ export default async function DashboardPage({
   const todayCount = todayRes.count ?? 0
   const confirmedCount = confirmedRes.count ?? 0
 
-  const totalRevenueCents = (revenueRes.data ?? []).reduce((sum, row) => {
-    const price = (row.service as { price?: number } | null)?.price ?? 0
-    return sum + price
-  }, 0)
+  // Only a deposit is taken online; the balance is settled in person. Summing
+  // full service prices and calling it revenue overstates cash received by
+  // roughly five times, on the one number Bash is most likely to act on.
+  let depositsCollectedCents = 0
+  let bookedValueCents = 0
+
+  for (const row of revenueRes.data ?? []) {
+    const service = row.service as { price?: number; deposit_percentage?: number } | null
+    if (!service?.price) continue
+
+    if (row.status === 'confirmed') bookedValueCents += service.price
+    if (row.payment_status === 'paid') {
+      depositsCollectedCents += calculateDeposit(
+        service.price,
+        service.deposit_percentage ?? 0,
+      ).depositTotal
+    }
+  }
 
   const bookings = (bookingsRes.data ?? []) as Booking[]
   const total = bookingsRes.count ?? 0
@@ -131,9 +146,9 @@ export default async function DashboardPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           icon={<RevenueIcon />}
-          label="Total Revenue"
-          value={formatPrice(totalRevenueCents)}
-          subtitle="From confirmed bookings"
+          label="Deposits Collected"
+          value={formatPrice(depositsCollectedCents)}
+          subtitle={`${formatPrice(bookedValueCents)} booked — balance due in person`}
         />
         <StatCard
           icon={<TodayIcon />}

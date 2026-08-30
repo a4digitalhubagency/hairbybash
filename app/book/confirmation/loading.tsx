@@ -1,6 +1,6 @@
 export default function ConfirmationLoading() {
   return (
-    <div className="min-h-screen bg-dark pt-20 pb-16 px-6">
+    <div className="min-h-screen bg-dark pt-nav pb-16 px-6">
       <div className="max-w-lg mx-auto">
         {/* Icon + heading skeleton */}
         <div className="text-center mb-8">

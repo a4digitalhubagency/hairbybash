@@ -52,5 +52,19 @@ export async function GET(req: Request) {
     )
   }
 
-  return NextResponse.json({ cutoff, released: released.length })
+  // Rate-limit windows are only ever consulted for the current period, so
+  // anything older than a day is dead weight. Folded in here rather than given
+  // its own schedule — it is housekeeping, not a job worth watching.
+  let prunedWindows: number | null = null
+  const { data: pruned, error: pruneError } = await supabase.rpc('prune_rate_limits', {
+    p_older_than: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  })
+  if (pruneError) {
+    // Never fail the sweep over housekeeping — releasing slots is the job.
+    console.error('[cron/sweep-pending] Rate-limit prune failed (non-fatal):', pruneError.message)
+  } else {
+    prunedWindows = pruned as number
+  }
+
+  return NextResponse.json({ cutoff, released: released.length, prunedWindows })
 }
