@@ -26,7 +26,7 @@ export default async function BookPage({ searchParams }: Props) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-dark pt-20 pb-24">
+      <main className="min-h-screen bg-dark pt-nav pb-24">
         <BookingFlow
           categories={categories}
           services={services}
