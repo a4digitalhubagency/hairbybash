@@ -4,6 +4,7 @@ import StatCard from '@/components/admin/StatCard'
 import BookingsTable from '@/components/admin/BookingsTable'
 import BlockedDatesManager from '@/components/admin/BlockedDatesManager'
 import type { Booking, BlockedDate } from '@/types'
+import { studioDate } from '@/lib/date'
 
 const PAGE_SIZE = 10
 
@@ -50,7 +51,7 @@ export default async function DashboardPage({
   const filter = (params.filter ?? 'upcoming') as 'upcoming' | 'all'
 
   const admin = createAdminClient()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = studioDate()
 
   // ── Parallel fetch everything ────────────────────────────────────────────
   const [pendingRes, todayRes, confirmedRes, revenueRes, bookingsRes, blockedRes] =

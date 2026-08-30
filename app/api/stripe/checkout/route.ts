@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { getAvailableSlots } from '@/lib/availability'
 import { getAppUrl } from '@/lib/url'
+import { calculateDeposit, STRIPE_MIN_CHARGE_CENTS } from '@/lib/format'
+import { studioDate } from '@/lib/date'
 
 interface CheckoutBody {
   serviceId: string
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Reject past dates
-  const today = new Date().toISOString().slice(0, 10)
+  const today = studioDate()
   if (date < today) {
     return NextResponse.json({ error: 'Cannot book a past date' }, { status: 400 })
   }
@@ -109,14 +111,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 6. Calculate deposit amount ────────────────────────────────────────────
-  // depositBase = price * deposit_percentage / 100
-  // Add GST (5% Canadian) on top of the deposit
-  const depositBase = Math.round(service.price * service.deposit_percentage / 100)
-  const depositWithGST = Math.round(depositBase * 1.05)
+  // Shared with the admin form so the warning shown there and the rejection
+  // here can never disagree — see lib/format.ts.
+  const { depositTotal: depositWithGST } = calculateDeposit(
+    service.price,
+    service.deposit_percentage,
+  )
 
   // Stripe requires unit_amount >= 50 cents (CAD). Guard against misconfigured
   // services with $0 price or 0% deposit to prevent a hard 500 at checkout.
-  if (depositWithGST < 50) {
+  if (depositWithGST < STRIPE_MIN_CHARGE_CENTS) {
     console.error('[checkout] Deposit amount too low for Stripe:', { depositWithGST, serviceId })
     return NextResponse.json(
       { error: 'This service is not currently available for online booking. Please contact us directly.' },

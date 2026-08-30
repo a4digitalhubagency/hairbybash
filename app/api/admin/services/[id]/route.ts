@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studioDate } from '@/lib/date'
 
 export async function PATCH(
   req: NextRequest,
@@ -19,7 +20,7 @@ export async function PATCH(
   if (body.price !== undefined)              updates.price = Math.round(Number(body.price) * 100)
   if (body.deposit_percentage !== undefined) updates.deposit_percentage = Number(body.deposit_percentage)
   if (body.duration_minutes !== undefined)   updates.duration_minutes = Number(body.duration_minutes)
-  if (body.category !== undefined)           updates.category = body.category
+  if (body.category_id !== undefined)        updates.category_id = body.category_id
   if (body.image_url !== undefined)          updates.image_url = body.image_url?.trim() || null
   if (body.active !== undefined)             updates.active = body.active
 
@@ -28,6 +29,20 @@ export async function PATCH(
   }
 
   const admin = createAdminClient()
+
+  // Keep the deprecated `category` text column in step with category_id.
+  if (updates.category_id) {
+    const { data: category } = await admin
+      .from('categories')
+      .select('name')
+      .eq('id', updates.category_id as string)
+      .maybeSingle()
+    if (!category) {
+      return NextResponse.json({ error: 'That category no longer exists' }, { status: 400 })
+    }
+    updates.category = category.name
+  }
+
   const { data, error } = await admin
     .from('services')
     .update(updates)
@@ -36,6 +51,12 @@ export async function PATCH(
     .single()
 
   if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'Another service in that category already has this name.' },
+        { status: 409 },
+      )
+    }
     console.error('[services] PATCH error:', error)
     return NextResponse.json({ error: 'Failed to update service' }, { status: 500 })
   }
@@ -60,7 +81,7 @@ export async function DELETE(
 
   // Guard: check for upcoming bookings unless force=true
   if (!force) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = studioDate()
     const { count } = await admin
       .from('bookings')
       .select('id', { count: 'exact', head: true })

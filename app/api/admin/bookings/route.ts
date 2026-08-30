@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studioDate } from '@/lib/date'
 
 const PAGE_SIZE = 10
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const filter = searchParams.get('filter') ?? 'upcoming'  // upcoming | all
 
   const admin = createAdminClient()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = studioDate()
 
   let query = admin
     .from('bookings')

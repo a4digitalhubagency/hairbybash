@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studioDate, studioMinutes } from '@/lib/date'
 import type { TimeSlot } from '@/types'
 
 function timeToMinutes(t: string): number {
@@ -94,11 +95,11 @@ export async function getAvailableSlots(
     end: timeToMinutes(b.end_time) + BREAK_MINUTES,
   }))
 
-  // Current time in minutes (for filtering past slots on today's date)
-  const today = new Date().toISOString().slice(0, 10)
-  const nowMinutes = date === today
-    ? new Date().getHours() * 60 + new Date().getMinutes()
-    : -1
+  // Current time in minutes (for filtering past slots on today's date).
+  // Both sides must be Calgary wall-clock — `date` comes from the client as a
+  // studio calendar day, so comparing it against a UTC "today" would filter the
+  // wrong day, and a UTC hour would hide the morning.
+  const nowMinutes = date === studioDate() ? studioMinutes() : -1
 
   const slots: TimeSlot[] = []
 
