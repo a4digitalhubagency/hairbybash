@@ -106,6 +106,18 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (bookingErr || !booking) {
+    // 23P01 = exclusion constraint violation: another request took this slot
+    // between the availability check above and this insert. That race is the
+    // whole reason the constraint exists, so it is an expected outcome rather
+    // than a fault — answer with the same 409 the flow already handles, which
+    // sends the client back to choose another time.
+    if (bookingErr?.code === '23P01') {
+      console.warn('[checkout] Slot taken mid-checkout:', date, startTime)
+      return NextResponse.json(
+        { error: 'This time slot was just taken. Please choose another.' },
+        { status: 409 },
+      )
+    }
     console.error('[checkout] Booking insert failed:', bookingErr)
     return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
   }
