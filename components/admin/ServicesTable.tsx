@@ -12,20 +12,29 @@ const PAGE_SIZE = 5
 const DESC_MAX = 300
 
 /**
- * LOE v1.2 raises the ceiling from 6 hours to 14. Note that 14 hours is a data
- * entry limit, not a promise: whether a given duration is actually bookable
- * depends on the open hours, which is what the form warns about.
+ * Duration choices, capped at the longest day the studio is actually open.
  *
- * Generated rather than listed so the ceiling is one number to change — the
- * hand-written list is what left four seeded services above it and uneditable.
+ * The LOE asked for a 14-hour ceiling, but Bash opens 08:00-21:00 — thirteen
+ * hours. A fourteenth hour would be selectable and never bookable, so the
+ * ceiling is derived from weekly_availability instead of hard-coded. Change her
+ * hours and this follows; there is no second number to remember.
+ *
+ * `current` is always included even when it exceeds the ceiling. A service
+ * saved before the hours shrank must still render in the select — a value with
+ * no matching option shows blank and is silently lost on the next save, which
+ * is exactly how four seeded services became uneditable.
  */
-const MAX_DURATION_MINUTES = 840
-
-const DURATION_OPTIONS = (() => {
-  const values = [30, 45, 60, 75, 90, 105]
-  for (let m = 120; m <= MAX_DURATION_MINUTES; m += 30) values.push(m)
-  return values.map((value) => ({ value, label: formatDuration(value) }))
-})()
+function durationOptions(ceilingMinutes: number, current: number) {
+  const ceiling = ceilingMinutes > 0 ? ceilingMinutes : 780
+  const values = [30, 45, 60, 75, 90, 105].filter((v) => v <= ceiling)
+  for (let m = 120; m <= ceiling; m += 30) values.push(m)
+  if (Number.isFinite(current) && current > 0 && !values.includes(current)) {
+    values.push(current)
+  }
+  return values
+    .sort((a, b) => a - b)
+    .map((value) => ({ value, label: formatDuration(value) }))
+}
 
 // ── Form types ───────────────────────────────────────────────────────────────
 
@@ -305,6 +314,7 @@ function bookabilityWarnings(form: ServiceForm, longestWindowMinutes: number): s
 function ServiceModal({ editing, form, saving, longestWindowMinutes, categories, onChange, onSave, onRequestDelete, onClose, addToast }: ModalProps) {
   const warnings = bookabilityWarnings(form, longestWindowMinutes)
   const categoryName = categories.find((c) => c.id === form.category_id)?.name ?? ''
+  const durationChoices = durationOptions(longestWindowMinutes, parseInt(form.duration_minutes, 10))
 
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -585,7 +595,7 @@ function ServiceModal({ editing, form, saving, longestWindowMinutes, categories,
                       onChange={(e) => field('duration_minutes', e.target.value)}
                       className={`${selectCls} pl-10`}
                     >
-                      {DURATION_OPTIONS.map((o) => (
+                      {durationChoices.map((o) => (
                         <option key={o.value} value={o.value} className="bg-[#111]">{o.label}</option>
                       ))}
                     </select>
