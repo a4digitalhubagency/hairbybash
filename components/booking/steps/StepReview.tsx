@@ -73,9 +73,12 @@ export default function StepReview({
             label="Time"
             value={`${formatTime(selectedSlot.start)} – ${formatTime(selectedSlot.end)}`}
           />
-          {blowDryRequested && (
-            <ReviewRow label="Blow Dry Add-On" value="Charged in person on the day" />
-          )}
+          <ReviewRow
+            label="Blow Dry Service"
+            value={blowDryRequested
+              ? 'Yes — fee charged in person on the day'
+              : 'No — arriving detangled & blow dried'}
+          />
         </div>
 
         {/* Client details card */}

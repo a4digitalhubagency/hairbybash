@@ -44,7 +44,12 @@ export interface Booking {
   status: BookingStatus
   payment_status: PaymentStatus
   stripe_session_id: string | null
-  /** Client indicated hair will be detangled & blow dried before appointment. Charged in person. */
+  /**
+   * True when the client asked US to detangle and blow dry — the fee is then
+   * charged in person, unconditionally. False means they will arrive ready, and
+   * the fee applies only if they don't. Never "hair will be detangled": the
+   * booking form once asked it that way round, which inverted every reader.
+   */
   blow_dry_requested: boolean
   /** Whether the client has used their one-time reschedule (must be >48h before appointment). */
   reschedule_used: boolean

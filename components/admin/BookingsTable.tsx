@@ -111,9 +111,9 @@ function BookingActionModal({ booking, action, loading, onConfirm, onClose }: Mo
                 </span>
               </div>
               <div className="flex justify-between items-center border-t border-white/5 pt-2">
-                <span className="text-white/50 text-xs">Blow Dry</span>
+                <span className="text-white/50 text-xs">Blow Dry Service</span>
                 <span className={`text-xs font-medium ${booking.blow_dry_requested ? 'text-gold' : 'text-white/60'}`}>
-                  {booking.blow_dry_requested ? 'Yes — charge in person' : 'No'}
+                  {booking.blow_dry_requested ? 'Requested — charge in person' : 'Arriving ready'}
                 </span>
               </div>
             </div>
