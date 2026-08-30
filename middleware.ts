@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { ADMIN_ROLE } from '@/lib/auth'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
@@ -25,13 +26,21 @@ export async function middleware(req: NextRequest) {
 
   const isLoginPage = req.nextUrl.pathname === '/admin/login'
 
-  // Already authenticated — redirect away from login page
-  if (isLoginPage && user) {
+  // Signed in is not the same as authorised. The dashboard is backed by the
+  // service-role key, so a bare "is there a user?" check would admit anyone who
+  // registered an account. The role lives in app_metadata, which only the
+  // service-role key can write — see lib/auth.ts.
+  const authorised = user?.app_metadata?.role === ADMIN_ROLE
+
+  // Already an admin — no reason to sit on the login page
+  if (isLoginPage && authorised) {
     return NextResponse.redirect(new URL('/admin/dashboard', req.url))
   }
 
-  // Not authenticated — redirect to login
-  if (!isLoginPage && !user) {
+  // Signed in without the role: send them back to the login page rather than
+  // the dashboard, so a non-admin account cannot loop into a shell it may not
+  // see. The routes behind it return 403 regardless.
+  if (!isLoginPage && !authorised) {
     return NextResponse.redirect(new URL('/admin/login', req.url))
   }
 
