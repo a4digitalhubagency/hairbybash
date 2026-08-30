@@ -51,7 +51,14 @@ export interface Booking {
    * booking form once asked it that way round, which inverted every reader.
    */
   blow_dry_requested: boolean
-  /** Whether the client has used their one-time reschedule (must be >48h before appointment). */
+  /**
+   * NOT IMPLEMENTED. No code reads or writes this — it is always false.
+   *
+   * The one-reschedule-over-48-hours policy is real and quoted to clients in
+   * three emails and two booking screens, but it is enforced by Bash by hand.
+   * The column exists so the feature has somewhere to land; until then, do not
+   * read it as a record of anything.
+   */
   reschedule_used: boolean
   /** When the 24-hour reminder was sent. Null means it has not gone out yet. */
   reminder_sent_at: string | null
