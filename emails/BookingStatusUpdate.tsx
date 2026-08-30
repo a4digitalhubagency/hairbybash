@@ -80,7 +80,7 @@ export default function BookingStatusUpdate({ booking, status }: Props) {
               <Column style={detailValue}>{formatDuration(service.duration_minutes)}</Column>
             </Row>
             <Row style={detailRow}>
-              <Column style={detailLabel}>Blow Dry</Column>
+              <Column style={detailLabel}>Blow Dry Service</Column>
               <Column style={detailValue}>
                 {booking.blow_dry_requested
                   ? 'Yes — add-on fee charged in person'

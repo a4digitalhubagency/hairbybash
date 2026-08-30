@@ -70,7 +70,7 @@ export default function BookingConfirmedClient({ booking }: Props) {
               <Column style={detailValue}>{formatDuration(service.duration_minutes)}</Column>
             </Row>
             <Row style={detailRow}>
-              <Column style={detailLabel}>Blow Dry</Column>
+              <Column style={detailLabel}>Blow Dry Service</Column>
               <Column style={detailValue}>
                 {booking.blow_dry_requested
                   ? 'Yes — add-on fee charged in person'
@@ -133,6 +133,14 @@ export default function BookingConfirmedClient({ booking }: Props) {
             <Text style={policyText}>
               <strong>Rescheduling —</strong> One reschedule is permitted if requested more than
               48 hours before your appointment. Reply to this email or contact us on WhatsApp to arrange.
+            </Text>
+          </Section>
+
+          <Section style={section}>
+            <Text style={blowDryNotice}>
+              {booking.blow_dry_requested
+                ? 'You asked us to detangle and blow dry your hair. That fee is charged in person on the day, on top of your service.'
+                : 'Please arrive with your hair fully detangled and blow dried. If it has not been prepared, the blow dry fee will be charged in person on the day.'}
             </Text>
           </Section>
 

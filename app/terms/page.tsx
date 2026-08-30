@@ -111,8 +111,10 @@ export default function TermsPage() {
                 <li>The required extension hair for your service (we will advise you on quantity and brand)</li>
               </ul>
               <p className="mt-3">
-                Failure to arrive with hair in the proper condition may result in an additional prep
-                fee or rescheduling of your appointment.
+                You may select the Blow Dry Service when booking and we will detangle and blow dry
+                for you; the fee is charged in person on the day. If you decline it and arrive with
+                hair that has not been prepared, the same fee applies, and in some cases the
+                appointment may need to be rescheduled.
               </p>
             </div>
 

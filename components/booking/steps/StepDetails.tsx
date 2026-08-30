@@ -110,14 +110,15 @@ export default function StepDetails({
           )}
         </div>
 
-        {/* Blow dry question */}
+        {/* Blow Dry Service */}
         <div className="border border-white/10 rounded-2xl p-5 space-y-3">
           <div>
             <p className="text-white text-sm font-medium leading-snug">
-              Will your hair be detangled &amp; blow dried before your appointment?
+              Blow Dry Service
             </p>
             <p className="text-white/40 text-xs mt-1 leading-relaxed">
-              All clients must arrive with hair fully detangled and blow dried, or a blow dry add-on fee applies.
+              Your hair must be fully detangled and blow dried before your appointment.
+              Would you like us to do it for you?
             </p>
           </div>
 
@@ -146,10 +147,18 @@ export default function StepDetails({
             </button>
           </div>
 
-          {/* Conditional notice — only shown when client picks Yes */}
+          {/* Both answers carry a fee notice, but only one of them is conditional. */}
           {blowDryRequested === true && (
             <p className="text-gold/80 text-xs leading-relaxed bg-gold/8 border border-gold/20 rounded-xl px-4 py-3">
-              A blow dry add-on fee will be charged <span className="font-semibold">in person</span> on the day of your appointment.
+              A blow dry fee will be added to your service and charged{' '}
+              <span className="font-semibold">in person</span> on the day.
+            </p>
+          )}
+
+          {blowDryRequested === false && (
+            <p className="text-white/55 text-xs leading-relaxed bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+              Please arrive with your hair fully detangled and blow dried. If it isn&apos;t,
+              the blow dry fee will be charged <span className="font-semibold">in person</span> on the day.
             </p>
           )}
         </div>

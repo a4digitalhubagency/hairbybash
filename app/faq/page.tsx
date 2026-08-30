@@ -53,7 +53,7 @@ const FAQS = [
       },
       {
         q: 'Do I need to come with washed hair?',
-        a: 'Yes — please arrive with clean, detangled, and blow-dried hair unless otherwise specified. This ensures the best results and respects everyone\'s time.',
+        a: 'Yes — please arrive with clean, detangled, and blow-dried hair unless otherwise specified. This ensures the best results and respects everyone\'s time. If you\'d rather we did it, choose the Blow Dry Service when you book — the fee is charged in person on the day.',
       },
       {
         q: 'Do you provide hair (extensions)?',

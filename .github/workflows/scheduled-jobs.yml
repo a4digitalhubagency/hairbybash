@@ -1,0 +1,46 @@
+name: Scheduled jobs
+
+# Hourly.
+#
+# GitHub treats scheduled workflows as best effort: runs are delayed under load
+# and can be skipped entirely. Both handlers are built for that. The reminder
+# job has no lower time bound, so each run also picks up anything an earlier run
+# missed, and it claims each booking in the database before sending so overlapping
+# runs cannot double-send. The sweeper is idempotent by construction.
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send 24-hour reminders
+        run: |
+          response=$(curl -sS --fail-with-body \
+            --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/reminders")
+          echo "$response"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Release abandoned checkout slots
+        # Runs even if the reminder step failed — an unreleased slot blocks
+        # bookings, and the two jobs share nothing but a schedule.
+        if: always()
+        run: |
+          response=$(curl -sS --fail-with-body \
+            --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/sweep-pending")
+          echo "$response"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
