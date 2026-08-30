@@ -10,8 +10,11 @@ name: Scheduled jobs
 #
 # Configuration lives in Settings -> Secrets and variables -> Actions:
 #   CRON_SECRET  Secret.   Must match the CRON_SECRET set in Vercel.
-#   APP_URL      Either.   Production URL, no trailing slash. Not sensitive, so
-#                          a Variable is fine; a Secret works too.
+#   APP_URL      Either.   Canonical production URL, no trailing slash. Not
+#                          sensitive, so a Variable is fine; a Secret works too.
+#                          Must be the host that serves the app directly — an
+#                          apex that redirects to www will fail the run, because
+#                          curl drops the Authorization header across hosts.
 on:
   schedule:
     - cron: '0 * * * *'
@@ -32,6 +35,8 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Check configuration
         run: |
           missing=()
@@ -62,18 +67,10 @@ jobs:
           echo "Configuration OK."
 
       - name: Send 24-hour reminders
-        run: |
-          curl -sS --fail-with-body --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/reminders"
-          echo
+        run: .github/scripts/call-cron.sh reminders
 
       - name: Release abandoned checkout slots
         # Runs even if the reminder step failed — an unreleased slot blocks
         # bookings, and the two jobs share nothing but a schedule.
         if: always() && env.APP_URL != ''
-        run: |
-          curl -sS --fail-with-body --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/sweep-pending"
-          echo
+        run: .github/scripts/call-cron.sh sweep-pending
