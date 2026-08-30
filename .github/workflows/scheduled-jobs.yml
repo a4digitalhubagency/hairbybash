@@ -7,6 +7,11 @@ name: Scheduled jobs
 # job has no lower time bound, so each run also picks up anything an earlier run
 # missed, and it claims each booking in the database before sending so overlapping
 # runs cannot double-send. The sweeper is idempotent by construction.
+#
+# Configuration lives in Settings -> Secrets and variables -> Actions:
+#   CRON_SECRET  Secret.   Must match the CRON_SECRET set in Vercel.
+#   APP_URL      Either.   Production URL, no trailing slash. Not sensitive, so
+#                          a Variable is fine; a Secret works too.
 on:
   schedule:
     - cron: '0 * * * *'
@@ -16,31 +21,59 @@ concurrency:
   group: scheduled-jobs
   cancel-in-progress: false
 
+# APP_URL is read from either tab. It is a public URL, so people reasonably file
+# it under Variables — reading only one tab turns that into "curl: (3) URL
+# rejected: No host part in the URL", which says nothing about what to fix.
+env:
+  APP_URL: ${{ secrets.APP_URL || vars.APP_URL }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      - name: Check configuration
+        run: |
+          missing=()
+          [ -n "$APP_URL" ]     || missing+=("APP_URL")
+          [ -n "$CRON_SECRET" ] || missing+=("CRON_SECRET")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not configured — missing: ${missing[*]}"
+            echo "::error::Add under Settings > Secrets and variables > Actions."
+            echo "::error::CRON_SECRET must be a Secret and must match the value set in Vercel."
+            echo "::error::APP_URL may be a Secret or a Variable, e.g. https://hairbybash.ca"
+            exit 1
+          fi
+
+          case "$APP_URL" in
+            https://*) ;;
+            http://*)
+              echo "::error::APP_URL must be https — got a plain http URL."
+              exit 1 ;;
+            *)
+              echo "::error::APP_URL must start with https:// — got something else."
+              echo "::error::A localhost value will not work; runners cannot reach your machine."
+              exit 1 ;;
+          esac
+
+          # A trailing slash would produce //api/cron/... which Next does not route.
+          echo "APP_URL=${APP_URL%/}" >> "$GITHUB_ENV"
+          echo "Configuration OK."
+
       - name: Send 24-hour reminders
         run: |
-          response=$(curl -sS --fail-with-body \
-            --max-time 60 \
+          curl -sS --fail-with-body --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/reminders")
-          echo "$response"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+            "$APP_URL/api/cron/reminders"
+          echo
 
       - name: Release abandoned checkout slots
         # Runs even if the reminder step failed — an unreleased slot blocks
         # bookings, and the two jobs share nothing but a schedule.
-        if: always()
+        if: always() && env.APP_URL != ''
         run: |
-          response=$(curl -sS --fail-with-body \
-            --max-time 60 \
+          curl -sS --fail-with-body --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/sweep-pending")
-          echo "$response"
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+            "$APP_URL/api/cron/sweep-pending"
+          echo
